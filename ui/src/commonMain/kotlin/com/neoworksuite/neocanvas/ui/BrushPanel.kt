@@ -81,7 +81,8 @@ fun BrushPanel(state: EditorState, modifier: Modifier = Modifier) {
             },
         )
     }
-    val pad = remember { BrushTestPadState() }
+    state.brushAssetResolver = library.assetResolver
+    val pad = remember(library) { BrushTestPadState(assetResolver = library.assetResolver) }
     val packManager = remember(library) { BrushPackManager(library) }
     var page by remember { mutableStateOf(BrushPanelPage.Library) }
     var addMenu by remember { mutableStateOf(false) }

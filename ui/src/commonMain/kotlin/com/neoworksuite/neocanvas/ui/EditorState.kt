@@ -61,6 +61,8 @@ import com.neoworksuite.neocanvas.core.model.LineMarker
 import com.neoworksuite.neocanvas.core.model.LineStyle
 import com.neoworksuite.neocanvas.core.store.LoadResult
 import com.neoworksuite.neocanvas.core.store.SaveResult
+import com.neoworksuite.neocanvas.renderer.BrushAssetResolver
+import com.neoworksuite.neocanvas.renderer.BuiltInBrushAssets
 import com.neoworksuite.neocanvas.renderer.RasterColor
 import com.neoworksuite.neocanvas.renderer.RasterPoint
 import com.neoworksuite.neocanvas.renderer.Rasterizer
@@ -93,6 +95,7 @@ class EditorState(
     val history: DocumentHistory,
     private val fileActions: EditorFileActions = UnavailableEditorFileActions,
     val tileStore: TileStore = TileStore(),
+    var brushAssetResolver: BrushAssetResolver = BuiltInBrushAssets.resolver,
 ) {
     private var documentRevision by mutableIntStateOf(0)
     private var editVersion by mutableIntStateOf(0)
@@ -2212,6 +2215,7 @@ class EditorState(
             brush = stroke.brush,
             symmetry = stroke.symmetry,
             alphaLocked = stroke.alphaLocked,
+            assetResolver = brushAssetResolver,
         )
     }
 
@@ -3557,6 +3561,7 @@ class EditorState(
             else brush,
             symmetry = symmetry,
             alphaLocked = if (mask != null) false else activeLayer.alphaLocked,
+            assetResolver = brushAssetResolver,
         )
     }
 

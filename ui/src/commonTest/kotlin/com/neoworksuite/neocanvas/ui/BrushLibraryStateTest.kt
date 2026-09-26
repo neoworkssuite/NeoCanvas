@@ -65,12 +65,12 @@ class BrushLibraryStateTest {
     @Test
     fun category_search_favourites_and_recents_filter_the_library() {
         val state = BrushLibraryState()
-        state.selectCategory("inks")
-        assertEquals(10, state.visibleBrushes.size)
+        state.selectCategory("inking")
+        assertEquals(6, state.visibleBrushes.size)
 
         state.query = "marker"
-        assertTrue(state.visibleBrushes.size >= 10)
-        assertTrue(state.visibleBrushes.all { "marker" in it.name.lowercase() || it.categoryId == "markers" })
+        assertTrue(state.visibleBrushes.isNotEmpty())
+        assertTrue(state.visibleBrushes.all { "marker" in it.name.lowercase() || "marker" in it.description.lowercase() })
 
         val favourite = BuiltInBrushes.pencil
         state.toggleFavourite(favourite.id)

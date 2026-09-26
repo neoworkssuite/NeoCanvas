@@ -7,24 +7,24 @@ import kotlin.test.assertTrue
 
 class BrushCatalogTest {
     @Test
-    fun library_has_twenty_one_ordered_categories_with_ten_paint_brushes_each() {
-        assertEquals(21, BuiltInBrushes.categories.size)
-        assertEquals(210, BuiltInBrushes.paintBrushes.size)
-        BuiltInBrushes.categories.forEach { category ->
-            assertEquals(10, BuiltInBrushes.inCategory(category.id).size, category.name)
-        }
+    fun launch_library_has_five_ordered_core_collections_and_thirty_two_brushes() {
+        assertEquals(
+            listOf("Essentials", "Sketching", "Inking", "Painting", "Textures"),
+            BuiltInBrushes.categories.map { it.name },
+        )
+        assertEquals(listOf(6, 6, 6, 8, 6), BuiltInBrushes.categories.map { BuiltInBrushes.inCategory(it.id).size })
+        assertEquals(32, BuiltInBrushes.paintBrushes.size)
     }
 
     @Test
-    fun nature_categories_offer_landscape_foliage_and_tree_tools() {
-        assertEquals(
-            listOf("Landscape", "Foliage", "Trees"),
-            BuiltInBrushes.categories.takeLast(3).map { it.name },
-        )
-        assertTrue(BuiltInBrushes.inCategory("landscape").any { it.name == "Water Reflection" })
-        assertTrue(BuiltInBrushes.inCategory("foliage").any { it.name == "Leaf Cluster" && it.tip == BrushTip.Leaf })
-        assertTrue(BuiltInBrushes.inCategory("foliage").any { it.name == "Grass Tuft" && it.tip == BrushTip.Grass })
-        assertTrue(BuiltInBrushes.inCategory("trees").any { it.name == "Bark Grain" && it.tip == BrushTip.Bark })
+    fun every_core_brush_is_authored_described_and_asset_references_are_valid() {
+        val refs = BuiltInBrushAssetRefs.all.toSet()
+        BuiltInBrushes.paintBrushes.forEach { brush ->
+            assertEquals(3, brush.version, brush.id)
+            assertTrue(brush.description.isNotBlank(), brush.id)
+            brush.stamp?.resolvedShapes.orEmpty().forEach { assertTrue(it in refs, "${brush.id}: ${it.id}") }
+            brush.stamp?.grain?.let { assertTrue(it in refs, "${brush.id}: ${it.id}") }
+        }
     }
 
     @Test
@@ -36,9 +36,9 @@ class BrushCatalogTest {
     }
 
     @Test
-    fun search_matches_names_and_categories_without_case_sensitivity() {
+    fun search_matches_names_descriptions_and_categories_without_case_sensitivity() {
         assertTrue(BuiltInBrushes.search("GRAPHITE").any { it.id == "neo.pencil" })
-        assertEquals(10, BuiltInBrushes.search("watercolors").size)
+        assertEquals(8, BuiltInBrushes.search("painting").size)
         assertEquals(BuiltInBrushes.paintBrushes, BuiltInBrushes.search(""))
     }
 

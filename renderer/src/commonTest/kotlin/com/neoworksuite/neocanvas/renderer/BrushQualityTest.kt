@@ -74,7 +74,7 @@ class BrushQualityTest {
 
     @Test fun pencil_and_pen_presets_keep_their_precision_spacing_at_large_sizes() {
         val points = listOf(RasterPoint(0f, 20f), RasterPoint(1_000f, 20f))
-        val precisionPencil = BuiltInBrushes.inCategory("pencils").first { it.name == "Precision Pencil" }
+        val precisionPencil = BuiltInBrushes.inCategory("sketching").first { it.name == "Technical Pencil" }
         val leaf = precisionPencil.copy(
             categoryId = "foliage",
             tip = BrushTip.Leaf,
@@ -106,7 +106,7 @@ class BrushQualityTest {
     private fun paint(points: List<RasterPoint>, brush: BrushDefinition): ByteArray {
         val store = TileStore()
         store.applyPatch(Rasterizer.stroke(store, "a", points, RasterColor(20, 40, 60),
-            10f, .6f, BrushMode.PAINT, 64, 64, brush = brush))
+            10f, .6f, BrushMode.PAINT, 64, 64, brush = brush, assetResolver = BuiltInBrushAssets.resolver))
         return store.read(TileKey("a", 0, 0))!!
     }
     @Test fun collinear_pointer_samples_do_not_change_ink_density() {

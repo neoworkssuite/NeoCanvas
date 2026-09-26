@@ -34,6 +34,7 @@ class StampMaskSamplerTest {
         val ref = BrushAssetRef("diamond", "0".repeat(64))
         val brush = BuiltInBrushes.ink.copy(
             version = 2,
+            description = "",
             stamp = BrushStamp(shape = ref, stampCount = 3, scatterAcross = .4f, angleMode = StampAngleMode.DirectionJitter),
         )
         val resolver = BrushAssetResolver { if (it == ref) diamond else null }
@@ -56,7 +57,7 @@ class StampMaskSamplerTest {
     }
 
     @Test fun planner_caps_substamps_and_preserves_the_endpoint() {
-        val brush = BuiltInBrushes.ink.copy(version = 2, stamp = BrushStamp(stampCount = 8, spacingRatio = .2f))
+        val brush = BuiltInBrushes.ink.copy(version = 2, description = "", stamp = BrushStamp(stampCount = 8, spacingRatio = .2f))
         val metrics = planStampWork(listOf(RasterPoint(0f, 10f), RasterPoint(2_000f, 10f)), 80f, brush)
         assertTrue(metrics.subStamps <= metrics.samples * 8)
         assertEquals(RasterPoint(2_000f, 10f), metrics.lastPoint)

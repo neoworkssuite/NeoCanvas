@@ -55,7 +55,8 @@ class RasterizerTest {
         fun paint(brush: com.neoworksuite.neocanvas.brushes.BrushDefinition): ByteArray {
             val store = TileStore()
             store.applyPatch(Rasterizer.stroke(store, "a", listOf(RasterPoint(16.5f, 16.5f)),
-                RasterColor(0, 0, 0), 20f, 1f, BrushMode.PAINT, 64, 64, brush = brush))
+                RasterColor(0, 0, 0), 20f, 1f, BrushMode.PAINT, 64, 64,
+                brush = brush, assetResolver = BuiltInBrushAssets.resolver))
             return store.read(TileAddress("a", 0, 0))!!
         }
         fun alpha(bytes: ByteArray, x: Int, y: Int) = bytes[(y * 256 + x) * 4 + 3].toInt() and 255

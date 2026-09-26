@@ -64,7 +64,7 @@ class NeoBrushCodecTest {
             startTaper = .2f,
             endTaper = .15f,
         )
-        val brush = BuiltInBrushes.ink.copy(version = 2, stamp = stamp)
+        val brush = BuiltInBrushes.ink.copy(version = 2, description = "", stamp = stamp)
 
         assertEquals(brush, NeoBrushCodec.decode(NeoBrushCodec.encode(brush)))
         assertNull(NeoBrushCodec.decode(NeoBrushCodec.encode(BuiltInBrushes.ink)).stamp)
@@ -92,9 +92,9 @@ class NeoBrushCodecTest {
 
     @Test
     fun v1_and_v2_decode_with_v3_defaults() {
-        val v1 = NeoBrushCodec.decode(NeoBrushCodec.encode(BuiltInBrushes.ink.copy(version = 1)))
+        val v1 = NeoBrushCodec.decode(NeoBrushCodec.encode(BuiltInBrushes.ink.copy(version = 1, description = "")))
         val shape = BrushAssetRef("legacy-shape", "d".repeat(64))
-        val v2Brush = BuiltInBrushes.ink.copy(version = 2, stamp = BrushStamp(shape = shape))
+        val v2Brush = BuiltInBrushes.ink.copy(version = 2, description = "", stamp = BrushStamp(shape = shape))
         val v2 = NeoBrushCodec.decode(NeoBrushCodec.encode(v2Brush))
 
         assertEquals("", v1.description)

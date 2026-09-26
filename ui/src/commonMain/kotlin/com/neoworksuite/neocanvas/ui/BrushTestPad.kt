@@ -4,13 +4,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import com.neoworksuite.neocanvas.brushes.BrushDefinition
+import com.neoworksuite.neocanvas.renderer.BrushAssetResolver
+import com.neoworksuite.neocanvas.renderer.BuiltInBrushAssets
 import com.neoworksuite.neocanvas.renderer.RasterColor
 import com.neoworksuite.neocanvas.renderer.RasterPoint
 import com.neoworksuite.neocanvas.renderer.Rasterizer
 import com.neoworksuite.neocanvas.renderer.TileKey
 import com.neoworksuite.neocanvas.renderer.TileStore
 
-class BrushTestPadState(val width: Int = 480, val height: Int = 180) {
+class BrushTestPadState(
+    val width: Int = 480,
+    val height: Int = 180,
+    private val assetResolver: BrushAssetResolver = BuiltInBrushAssets.resolver,
+) {
     private val tiles = TileStore()
     var revision: Int by mutableIntStateOf(0)
         private set
@@ -30,6 +36,7 @@ class BrushTestPadState(val width: Int = 480, val height: Int = 180) {
             canvasWidth = width,
             canvasHeight = height,
             brush = brush,
+            assetResolver = assetResolver,
         )
         if (tiles.applyPatch(patch).isNotEmpty()) revision++
     }

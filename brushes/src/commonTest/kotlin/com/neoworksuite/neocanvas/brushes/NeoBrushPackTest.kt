@@ -16,8 +16,8 @@ class NeoBrushPackTest {
             brushIds = listOf("oak", "grass"),
         ),
         brushes = linkedMapOf(
-            "oak" to BuiltInBrushes.ink.copy(id = "oak", name = "Oak", version = 2, stamp = BrushStamp()),
-            "grass" to BuiltInBrushes.ink.copy(id = "grass", name = "Grass", version = 2, stamp = BrushStamp()),
+            "oak" to BuiltInBrushes.ink.copy(id = "oak", name = "Oak", version = 2, description = "", stamp = BrushStamp()),
+            "grass" to BuiltInBrushes.ink.copy(id = "grass", name = "Grass", version = 2, description = "", stamp = BrushStamp()),
         ),
         assets = linkedMapOf("leaf.png" to byteArrayOf(1, 2, 3)),
     )
