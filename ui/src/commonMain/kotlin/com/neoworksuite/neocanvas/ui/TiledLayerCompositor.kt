@@ -39,3 +39,66 @@ internal fun seamSafeTileBounds(
         bottom = max(top, bottom),
     )
 }
+
+internal data class RasterTileImage(
+    val key: TileKey,
+    val image: androidx.compose.ui.graphics.ImageBitmap,
+)
+
+internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSeamlessRasterTiles(
+    tiles: List<RasterTileImage>,
+    documentWidth: Int,
+    documentHeight: Int,
+    documentScale: Float,
+    alpha: Float,
+    blendMode: androidx.compose.ui.graphics.BlendMode,
+) {
+    if (tiles.isEmpty() || documentWidth <= 0 || documentHeight <= 0 || alpha <= 0f) return
+
+    val documentBounds = androidx.compose.ui.geometry.Rect(
+        left = 0f,
+        top = 0f,
+        right = documentWidth.toFloat(),
+        bottom = documentHeight.toFloat(),
+    )
+    val canvas = drawContext.canvas
+    val layerPaint = androidx.compose.ui.graphics.Paint().apply {
+        this.alpha = alpha.coerceIn(0f, 1f)
+        this.blendMode = blendMode
+    }
+    val tilePaint = androidx.compose.ui.graphics.Paint().apply {
+        this.alpha = 1f
+        this.blendMode = androidx.compose.ui.graphics.BlendMode.Src
+        this.filterQuality = androidx.compose.ui.graphics.FilterQuality.None
+        this.isAntiAlias = false
+    }
+
+    canvas.save()
+    canvas.clipRect(documentBounds)
+    canvas.saveLayer(documentBounds, layerPaint)
+    try {
+        tiles.forEach { tile ->
+            val bounds = seamSafeTileBounds(
+                key = tile.key,
+                documentScale = documentScale,
+                documentWidth = documentWidth,
+                documentHeight = documentHeight,
+            )
+            val width = bounds.right - bounds.left
+            val height = bounds.bottom - bounds.top
+            if (width <= 0f || height <= 0f) return@forEach
+
+            canvas.save()
+            try {
+                canvas.translate(bounds.left, bounds.top)
+                canvas.scale(width / tile.image.width, height / tile.image.height)
+                canvas.drawImage(tile.image, androidx.compose.ui.geometry.Offset.Zero, tilePaint)
+            } finally {
+                canvas.restore()
+            }
+        }
+    } finally {
+        canvas.restore()
+        canvas.restore()
+    }
+}
