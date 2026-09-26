@@ -9,8 +9,21 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
+import kotlin.test.assertNull
 
 class BrushPreviewCacheTest {
+    @Test
+    fun preview_can_render_off_path_then_enter_the_cache() {
+        val cache = BrushPreviewCache(capacity = 4)
+        val color = RasterColor(240, 240, 240)
+        assertNull(cache.cachedImage(BuiltInBrushes.pencil, 80, 32, color))
+        val preview = cache.renderPreview(BuiltInBrushes.pencil, BuiltInBrushAssets.resolver, 80, 32, color)
+        assertEquals(0, cache.renderCount)
+        val stored = cache.storeImage(BuiltInBrushes.pencil, 80, 32, color, preview)
+        assertSame(stored, cache.cachedImage(BuiltInBrushes.pencil, 80, 32, color))
+        assertEquals(1, cache.renderCount)
+    }
+
     @Test
     fun reuses_identical_settings_and_invalidates_changes() {
         val cache = BrushPreviewCache(capacity = 4)

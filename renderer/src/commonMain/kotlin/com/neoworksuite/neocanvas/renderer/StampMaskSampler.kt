@@ -2,6 +2,7 @@ package com.neoworksuite.neocanvas.renderer
 
 import kotlin.math.cos
 import kotlin.math.floor
+import kotlin.math.min
 import kotlin.math.sin
 
 class StampMaskSampler(
@@ -32,7 +33,16 @@ class StampMaskSampler(
         fun value(x: Int, y: Int) = (asset.coverage[y * asset.width + x].toInt() and 255) / 255f
         val top = value(x0, y0) * (1f - fx) + value(x1, y0) * fx
         val bottom = value(x0, y1) * (1f - fx) + value(x1, y1) * fx
-        return top * (1f - fy) + bottom * fy
+        val sampled = top * (1f - fy) + bottom * fy
+        // A shape that reaches its bitmap bounds otherwise reveals its rectangular asset box,
+        // especially at large brush sizes. Feather the outer source pixels so authored and
+        // imported masks always meet transparent space before sampling ends.
+        val edgeDistancePixels = min(
+            (1f - kotlin.math.abs(rotatedX)) * (asset.width - 1) * .5f,
+            (1f - kotlin.math.abs(rotatedY)) * (asset.height - 1) * .5f,
+        )
+        val boundaryFeather = (edgeDistancePixels / 1.5f).coerceIn(0f, 1f)
+        return sampled * boundaryFeather
     }
 }
 

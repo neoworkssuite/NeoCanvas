@@ -24,6 +24,15 @@ class StampMaskSamplerTest {
         assertTrue(sampler.coverage(0f, .35f) > 0f)
     }
 
+    @Test fun masks_are_forced_to_transparency_at_the_rectangular_asset_boundary() {
+        val full = BrushAsset("full", 9, 9, ByteArray(81) { 255.toByte() })
+        val sampler = StampMaskSampler(full, scaleX = 1f, scaleY = 1f, angleRadians = 0f)
+        assertEquals(1f, sampler.coverage(0f, 0f), .001f)
+        assertEquals(0f, sampler.coverage(1f, 0f), .001f)
+        assertTrue(sampler.coverage(.75f, 0f) in 0f..1f)
+        assertTrue(sampler.coverage(.75f, 0f) < sampler.coverage(0f, 0f))
+    }
+
     @Test fun asset_precomputes_empty_rows_and_validates_storage() {
         val sparse = BrushAsset("sparse", 3, 3, byteArrayOf(0, 0, 0, 0, 1, 0, 0, 0, 0))
         assertEquals(listOf(null, 1..1, null), sparse.nonEmptyRows)

@@ -97,6 +97,7 @@ class EditorState(
     val tileStore: TileStore = TileStore(),
     var brushAssetResolver: BrushAssetResolver = BuiltInBrushAssets.resolver,
 ) {
+    internal val brushPreviewCache = BrushPreviewCache()
     private var documentRevision by mutableIntStateOf(0)
     private var editVersion by mutableIntStateOf(0)
     private var savedVersion by mutableIntStateOf(0)

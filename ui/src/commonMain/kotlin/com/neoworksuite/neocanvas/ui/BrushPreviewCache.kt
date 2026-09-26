@@ -29,6 +29,40 @@ internal class BrushPreviewCache(
         private set
     internal val size: Int get() = entries.size
 
+    fun cachedImage(
+        brush: BrushDefinition,
+        width: Int,
+        height: Int,
+        color: RasterColor,
+    ): ImageBitmap? {
+        val key = Key(brush, width, height, color)
+        return entries.remove(key)?.also { entries[key] = it }
+    }
+
+    fun renderPreview(
+        brush: BrushDefinition,
+        assetResolver: BrushAssetResolver,
+        width: Int,
+        height: Int,
+        color: RasterColor,
+    ): BrushPreview = renderer(brush, assetResolver, width, height, color)
+
+    fun storeImage(
+        brush: BrushDefinition,
+        width: Int,
+        height: Int,
+        color: RasterColor,
+        preview: BrushPreview,
+    ): ImageBitmap {
+        val key = Key(brush, width, height, color)
+        cachedImage(brush, width, height, color)?.let { return it }
+        val image = preview.toImageBitmap()
+        renderCount++
+        entries[key] = image
+        while (entries.size > capacity) entries.remove(entries.keys.first())
+        return image
+    }
+
     fun image(
         brush: BrushDefinition,
         assetResolver: BrushAssetResolver,
@@ -36,17 +70,8 @@ internal class BrushPreviewCache(
         height: Int,
         color: RasterColor,
     ): ImageBitmap {
-        val key = Key(brush, width, height, color)
-        entries.remove(key)?.let { image ->
-            entries[key] = image
-            return image
-        }
-        val preview = renderer(brush, assetResolver, width, height, color)
-        renderCount++
-        val image = preview.toImageBitmap()
-        entries[key] = image
-        while (entries.size > capacity) entries.remove(entries.keys.first())
-        return image
+        cachedImage(brush, width, height, color)?.let { return it }
+        return storeImage(brush, width, height, color, renderPreview(brush, assetResolver, width, height, color))
     }
 }
 

@@ -32,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -59,6 +60,8 @@ import com.neoworksuite.neocanvas.renderer.Rasterizer
 import com.neoworksuite.neocanvas.renderer.TileStore
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private enum class BrushPanelPage { Library, Studio }
 
@@ -84,7 +87,7 @@ fun BrushPanel(state: EditorState, modifier: Modifier = Modifier) {
     }
     state.brushAssetResolver = library.assetResolver
     val pad = remember(library) { BrushTestPadState(assetResolver = library.assetResolver) }
-    val previewCache = remember(library) { BrushPreviewCache() }
+    val previewCache = state.brushPreviewCache
     val packManager = remember(library) { BrushPackManager(library) }
     var page by remember { mutableStateOf(BrushPanelPage.Library) }
     var addMenu by remember { mutableStateOf(false) }
@@ -534,13 +537,38 @@ private fun StrokePreview(
     assetResolver: BrushAssetResolver,
     modifier: Modifier = Modifier,
 ) {
-    val image = remember(brush, cache, assetResolver) {
-        cache.image(brush, assetResolver, 180, 58, RasterColor(238, 241, 245))
+    val width = 120
+    val height = 44
+    val color = RasterColor(238, 241, 245)
+    val image by produceState(
+        initialValue = cache.cachedImage(brush, width, height, color),
+        brush,
+        cache,
+        assetResolver,
+    ) {
+        if (value == null) {
+            val preview = withContext(Dispatchers.Default) {
+                cache.renderPreview(brush, assetResolver, width, height, color)
+            }
+            value = cache.storeImage(brush, width, height, color, preview)
+        }
     }
-    Image(
-        bitmap = image,
-        contentDescription = "${brush.name} rendered preview",
-        contentScale = ContentScale.Fit,
-        modifier = modifier.clip(RoundedCornerShape(6.dp)).background(NeoCanvasColors.workspace),
-    )
+    val previewModifier = modifier.clip(RoundedCornerShape(6.dp)).background(NeoCanvasColors.workspace)
+    if (image != null) {
+        Image(
+            bitmap = image!!,
+            contentDescription = "${brush.name} rendered preview",
+            contentScale = ContentScale.Fit,
+            modifier = previewModifier,
+        )
+    } else {
+        Canvas(previewModifier.semantics { contentDescription = "${brush.name} preview loading" }) {
+            drawLine(
+                color = NeoCanvasColors.faint.copy(alpha = .55f),
+                start = Offset(size.width * .08f, size.height * .62f),
+                end = Offset(size.width * .9f, size.height * .38f),
+                strokeWidth = (size.height * .12f).coerceAtLeast(1f),
+            )
+        }
+    }
 }
