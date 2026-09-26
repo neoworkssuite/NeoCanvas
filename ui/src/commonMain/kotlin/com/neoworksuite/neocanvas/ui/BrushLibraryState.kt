@@ -12,6 +12,8 @@ import com.neoworksuite.neocanvas.brushes.BrushMode
 import com.neoworksuite.neocanvas.brushes.NeoBrushCodec
 import com.neoworksuite.neocanvas.brushes.NeoBrushPack
 import com.neoworksuite.neocanvas.brushes.NeoBrushPackCodec
+import com.neoworksuite.neocanvas.renderer.BrushAssetResolver
+import com.neoworksuite.neocanvas.renderer.BuiltInBrushAssets
 
 enum class BrushShelf { All, Favourites, Recent, Category }
 
@@ -26,6 +28,10 @@ class BrushLibraryState(
     private val recentIds = mutableStateListOf<String>()
     val customBrushes = mutableStateListOf<BrushDefinition>()
     val installedPacks = mutableStateListOf<InstalledBrushPack>()
+    val assetResolver: BrushAssetResolver = CompositeBrushAssetResolver(
+        builtIn = BuiltInBrushAssets.resolver,
+        installedAssets = { installedPacks.map { it.pack.assets } },
+    )
 
     init {
         customBrushes.addAll(restored?.brushes.orEmpty())

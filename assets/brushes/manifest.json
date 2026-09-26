@@ -1,0 +1,333 @@
+{
+  "format": 1,
+  "assets": [
+    {
+      "id": "bark-fragment-a",
+      "kind": "shape",
+      "source": "source/shapes/bark-fragment-a.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "7c055f31e79cee9e41724296d94999631c57edb5c9f17a11964bbfe04f40ae43"
+    },
+    {
+      "id": "bark-fragment-b",
+      "kind": "shape",
+      "source": "source/shapes/bark-fragment-b.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "1b9aa8e73d9e3d0692d3d198964aa3b7d5bdc24fc28bcebd066b790050215155"
+    },
+    {
+      "id": "branch-a",
+      "kind": "shape",
+      "source": "source/shapes/branch-a.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "0895814925cd97877bb13579682c8f994cf528266fb39a42bbf25b67c98c7dc8"
+    },
+    {
+      "id": "branch-b",
+      "kind": "shape",
+      "source": "source/shapes/branch-b.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "da2a8e17460dfb3df80c6442c6759ef30ba488a1e90c1086805fb7dc4570e63f"
+    },
+    {
+      "id": "bristle-flat",
+      "kind": "shape",
+      "source": "source/shapes/bristle-flat.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "69044c39ef9ff32f0f538ef78af1ba657cc4a71333e33ae813c0fd0ccc71e3c0"
+    },
+    {
+      "id": "charcoal",
+      "kind": "shape",
+      "source": "source/shapes/charcoal.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "96550d0772d6b7aa565b824644d7da80f94cfad425597a59b7b06cc5963efb0b"
+    },
+    {
+      "id": "chisel",
+      "kind": "shape",
+      "source": "source/shapes/chisel.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "b999464e3a434937980073ed5648003d7aff1967a0a1dfc7deabdb3c36fe8e02"
+    },
+    {
+      "id": "fern-a",
+      "kind": "shape",
+      "source": "source/shapes/fern-a.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "80e426ab3b6b3011c389686a0c2e4a6e8cba197be8a49aac2b3f353258b86c79"
+    },
+    {
+      "id": "fern-b",
+      "kind": "shape",
+      "source": "source/shapes/fern-b.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "7fa7dd1ba3de55d53ca9a51abc39f6a00ed33118c8c78050a41e84b1968be9dd"
+    },
+    {
+      "id": "grain-bark",
+      "kind": "grain",
+      "source": "source/grains/grain-bark.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "3855ba163ca68a0d4cddb2f4d0c14c682f195e51cce80209554e2e89d9e7e966"
+    },
+    {
+      "id": "grain-canvas",
+      "kind": "grain",
+      "source": "source/grains/grain-canvas.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "b687e41c64378e4d3ed736a8d3698c136cdc8c56871bf57f512116901020fe24"
+    },
+    {
+      "id": "grain-chalk",
+      "kind": "grain",
+      "source": "source/grains/grain-chalk.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "1fac5dcc7c3cb44850e97f294b3ed7bc1ccd69e95a327abb546312e9b9672837"
+    },
+    {
+      "id": "grain-dry-paint",
+      "kind": "grain",
+      "source": "source/grains/grain-dry-paint.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "12dbc671b9568ef08c530f3c98a0054d9d73d82210e8c68c3e9683fd51137d1c"
+    },
+    {
+      "id": "grain-graphite",
+      "kind": "grain",
+      "source": "source/grains/grain-graphite.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "8e5f73899fb271022220fdd93a458cd4bfe09b8ddf9f6a31a5524a860915522f"
+    },
+    {
+      "id": "grain-organic",
+      "kind": "grain",
+      "source": "source/grains/grain-organic.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "3c4efa74c0e7114d095978351efbfd28736ce07365ad9b2cf565ef812aafe405"
+    },
+    {
+      "id": "grain-paper",
+      "kind": "grain",
+      "source": "source/grains/grain-paper.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "d350efadeda6075b23073949e00ef5035385141772ec4bfbe1df2fac9aaffe9e"
+    },
+    {
+      "id": "grain-stone",
+      "kind": "grain",
+      "source": "source/grains/grain-stone.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "1c27ed9dd050ed30a4fbd4e9c65775a64c0b5af8824a832a256f85b485fd5f58"
+    },
+    {
+      "id": "grass-meadow-a",
+      "kind": "shape",
+      "source": "source/shapes/grass-meadow-a.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "cc9bee30a8c3c321cc10fc3d1576a32525901b02664f3ab412f6ab2cf1b7a579"
+    },
+    {
+      "id": "grass-meadow-b",
+      "kind": "shape",
+      "source": "source/shapes/grass-meadow-b.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "904ee74db2f11acdaa2a5e7b6e610156f78ddb20b4cab79feb4cdf3cf5b337e5"
+    },
+    {
+      "id": "grass-wild-a",
+      "kind": "shape",
+      "source": "source/shapes/grass-wild-a.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "9487e1d56c92db31031c5980e309ccca1e4cfad10b3d9ad83512abfeee5557f7"
+    },
+    {
+      "id": "grass-wild-b",
+      "kind": "shape",
+      "source": "source/shapes/grass-wild-b.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "b2704198b6230956558479eb35a69b5973c62eac29ec3737669534fe5463234d"
+    },
+    {
+      "id": "hedge-a",
+      "kind": "shape",
+      "source": "source/shapes/hedge-a.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "5e3e5fe0bbe659f0ef5aa38cff2aaf853d6185ebbb928bfab10b3f6a2b2ec0d8"
+    },
+    {
+      "id": "hedge-b",
+      "kind": "shape",
+      "source": "source/shapes/hedge-b.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "8ccafe4d017ca523af64dc97cf5867af097011cc386fb303bf531103e88b3390"
+    },
+    {
+      "id": "leaf-broad-a",
+      "kind": "shape",
+      "source": "source/shapes/leaf-broad-a.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "d9d9b02eacf07796a14ec0b80fe0fa8d58929836604270e1d63102c631ce9bfd"
+    },
+    {
+      "id": "leaf-broad-b",
+      "kind": "shape",
+      "source": "source/shapes/leaf-broad-b.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "21f25a92a1414eb66586d038ada5d37b99b306a7d3287b27d5f22b072c145cde"
+    },
+    {
+      "id": "leaf-broad-c",
+      "kind": "shape",
+      "source": "source/shapes/leaf-broad-c.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "cabbc04f7f1652243283ed464ef4d53b7e598ef1cc116a4e5645db945eac8dcc"
+    },
+    {
+      "id": "leaf-fine-a",
+      "kind": "shape",
+      "source": "source/shapes/leaf-fine-a.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "fdd82edcf981073efa42729bc89fbb4724bea06b912e0808fd062b9d32ad44be"
+    },
+    {
+      "id": "leaf-fine-b",
+      "kind": "shape",
+      "source": "source/shapes/leaf-fine-b.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "f1c24b873c6a2efaa7a61d8b16c6440c7194d48710e8d3e151d29621213bb261"
+    },
+    {
+      "id": "leaf-oak-a",
+      "kind": "shape",
+      "source": "source/shapes/leaf-oak-a.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "c8b4891592e3753d03e46f5d1bd2a2c7dc66f086618e66dbbd9695acad9dd622"
+    },
+    {
+      "id": "leaf-oak-b",
+      "kind": "shape",
+      "source": "source/shapes/leaf-oak-b.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "7ef9bcd11373d7d86d5891a592d8c8817ddf3e27dd4762e33184c0c0e09ff0c8"
+    },
+    {
+      "id": "leaf-tropical-a",
+      "kind": "shape",
+      "source": "source/shapes/leaf-tropical-a.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "302d5332232f747cfadf076b03ce2fb74e022942b31a59bab606d9ec7f51eeaa"
+    },
+    {
+      "id": "leaf-tropical-b",
+      "kind": "shape",
+      "source": "source/shapes/leaf-tropical-b.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "056467dda741b8222d47a37da3fd8740777b6eeba11af833506b4095756342d7"
+    },
+    {
+      "id": "moss-a",
+      "kind": "shape",
+      "source": "source/shapes/moss-a.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "19c01839b66727b25e43c5905b9ce5fb5aab28b734328803942678b7b266f703"
+    },
+    {
+      "id": "moss-b",
+      "kind": "shape",
+      "source": "source/shapes/moss-b.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "f6c76af625f7ac0eab00c8b400e2b93990d6b923d222bc79d6f95031e43430eb"
+    },
+    {
+      "id": "pine-bough-a",
+      "kind": "shape",
+      "source": "source/shapes/pine-bough-a.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "879686476574d4aa7c5f163d74246cdfcac8b08dc2d5382f9b14d89bfab9e8d5"
+    },
+    {
+      "id": "pine-bough-b",
+      "kind": "shape",
+      "source": "source/shapes/pine-bough-b.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "a8dc128089e65f9dc36689cd217b1e345ec853dc993155387d79bf37d0a88da0"
+    },
+    {
+      "id": "pine-needle-a",
+      "kind": "shape",
+      "source": "source/shapes/pine-needle-a.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "5fad26d0aa864f2bbab6b360fd915d41d24372f14827b9d599945f6cdfbd2745"
+    },
+    {
+      "id": "pine-needle-b",
+      "kind": "shape",
+      "source": "source/shapes/pine-needle-b.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "6c0349054a9c6dee65a4e6ddd06c58895bd57104a1563c5cc6b99e838169ccba"
+    },
+    {
+      "id": "round-soft",
+      "kind": "shape",
+      "source": "source/shapes/round-soft.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "98a2e5925cb30ab3ff5a258c6210c2b57e15ddb5c0c0033b40ab0e91c7849ba1"
+    },
+    {
+      "id": "twig-a",
+      "kind": "shape",
+      "source": "source/shapes/twig-a.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "bcbf38999b0c3c6300d058c2c71bbcc7eef71ba41d33b18233f0eaab4146403c"
+    },
+    {
+      "id": "twig-b",
+      "kind": "shape",
+      "source": "source/shapes/twig-b.png",
+      "width": 64,
+      "height": 64,
+      "sha256": "779bfc11aec5ba9f8e4f7d97cd686b244e310b2f1a33d75f595b4fd05b7d3410"
+    }
+  ]
+}
