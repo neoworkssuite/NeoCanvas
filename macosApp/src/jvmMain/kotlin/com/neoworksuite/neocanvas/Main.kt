@@ -9,9 +9,11 @@ import androidx.compose.ui.window.application
 import com.neoworksuite.neocanvas.ui.NeoCanvasApp
 import com.neoworksuite.neocanvas.ui.neoCanvasIcon
 import com.neoworksuite.neocanvas.ui.rememberEditorState
+import com.neoworksuite.neocanvas.platform.MacEditorFileActions
 
 fun main() = application {
-    val editor = rememberEditorState()
+    val fileActions = remember { MacEditorFileActions() }
+    val editor = rememberEditorState(fileActions)
     val windowState = remember { WindowState(placement = WindowPlacement.Maximized) }
     Window(
         onCloseRequest = { editor.requestClose { exitApplication() } },
@@ -24,6 +26,6 @@ fun main() = application {
                 Item("Close", onClick = { editor.requestClose { exitApplication() } })
             }
         }
-        NeoCanvasApp(state = editor)
+        NeoCanvasApp(fileActions = fileActions, state = editor)
     }
 }
