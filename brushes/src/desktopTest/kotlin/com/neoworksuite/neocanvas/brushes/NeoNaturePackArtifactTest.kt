@@ -11,12 +11,27 @@ class NeoNaturePackArtifactTest {
             "cover.png" to File(source, "cover.png").readBytes(),
             "example.png" to File(source, "example.png").readBytes(),
         )
-        val pack = NeoNatureStudio.pack.copy(artwork = artwork)
+        val brushes = BuiltInBrushes.inCategory("nature").associateByTo(linkedMapOf()) { it.id }
+        val pack = NeoBrushPack(
+            manifest = NeoBrushPackManifest(
+                id = "com.neoworks.nature-studio",
+                version = "2.0.0",
+                name = "Neo Nature Studio",
+                summary = "16 original detailed nature brushes included with NeoCanvas.",
+                author = "NeoWorks",
+                website = "https://neoworkssuite.com/neocanvas/brushes",
+                licence = "NeoWorks Free Brush Pack Licence",
+                minimumAppVersion = "1.0.0",
+                brushIds = brushes.keys.toList(),
+            ),
+            brushes = brushes,
+            artwork = artwork,
+        )
         val first = NeoBrushPackCodec.encode(pack)
         val second = NeoBrushPackCodec.encode(pack)
         assertContentEquals(first, second)
         val decoded = NeoBrushPackCodec.decode(first, "1.0.0")
-        assertEquals(18, decoded.brushes.size)
+        assertEquals(16, decoded.brushes.size)
         assertEquals(setOf("cover.png", "example.png"), decoded.artwork.keys)
         val output = File("build/brush-packs/Neo-Nature-Studio.neobrushpack")
         output.parentFile.mkdirs(); output.writeBytes(first)

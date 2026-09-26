@@ -9,7 +9,7 @@ import kotlin.test.assertTrue
 
 class CommercialBrushQualityTest {
     @Test
-    fun every_core_brush_is_non_empty_repeatable_and_not_an_exact_duplicate() {
+    fun every_launch_brush_is_non_empty_repeatable_and_not_an_exact_duplicate() {
         val signatures = linkedMapOf<Int, String>()
         BuiltInBrushes.paintBrushes.forEach { brush ->
             val first = render(brush.id)
@@ -19,7 +19,7 @@ class CommercialBrushQualityTest {
             val signature = first.contentHashCode()
             assertTrue(signatures.put(signature, brush.id) == null, "${brush.id} duplicates ${signatures[signature]}")
         }
-        assertEquals(32, signatures.size)
+        assertEquals(48, signatures.size)
     }
 
     private fun render(id: String): ByteArray {

@@ -7,13 +7,13 @@ import kotlin.test.assertTrue
 
 class BrushCatalogTest {
     @Test
-    fun launch_library_has_five_ordered_core_collections_and_thirty_two_brushes() {
+    fun launch_library_has_six_ordered_collections_and_forty_eight_brushes() {
         assertEquals(
-            listOf("Essentials", "Sketching", "Inking", "Painting", "Textures"),
+            listOf("Essentials", "Sketching", "Inking", "Painting", "Textures", "Nature"),
             BuiltInBrushes.categories.map { it.name },
         )
-        assertEquals(listOf(6, 6, 6, 8, 6), BuiltInBrushes.categories.map { BuiltInBrushes.inCategory(it.id).size })
-        assertEquals(32, BuiltInBrushes.paintBrushes.size)
+        assertEquals(listOf(6, 6, 6, 8, 6, 16), BuiltInBrushes.categories.map { BuiltInBrushes.inCategory(it.id).size })
+        assertEquals(48, BuiltInBrushes.paintBrushes.size)
     }
 
     @Test

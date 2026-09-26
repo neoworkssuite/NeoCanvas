@@ -8,10 +8,11 @@ internal object NeoBrushLibrary {
         BrushCategory("inking", "Inking"),
         BrushCategory("painting", "Painting"),
         BrushCategory("textures", "Textures"),
+        BrushCategory("nature", "Nature"),
     )
     val brushes: List<BrushDefinition> =
         EssentialBrushes.brushes + SketchingBrushes.brushes + InkingBrushes.brushes +
-            PaintingBrushes.brushes + TextureBrushes.brushes
+            PaintingBrushes.brushes + TextureBrushes.brushes + NatureBrushes.brushes
 }
 
 internal fun authoredBrush(
