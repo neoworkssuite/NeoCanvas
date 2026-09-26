@@ -22,4 +22,20 @@ class BrushStampTest {
         assertFailsWith<IllegalArgumentException> { BrushStamp(scaleX = 0f) }
         assertFailsWith<IllegalArgumentException> { BrushStamp(grainScale = 8.01f) }
     }
+
+    @Test
+    fun shape_variants_are_unique_bounded_and_include_primary_shape() {
+        val primary = BrushAssetRef("leaf-a", "a".repeat(64))
+        val other = BrushAssetRef("leaf-b", "b".repeat(64))
+        assertFailsWith<IllegalArgumentException> {
+            BrushStamp(shape = primary, shapeVariants = listOf(primary, primary))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            BrushStamp(shapeVariants = (0..8).map { BrushAssetRef("shape-$it", it.toString().repeat(64)) })
+        }
+        assertFailsWith<IllegalArgumentException> {
+            BrushStamp(shape = primary, shapeVariants = listOf(other))
+        }
+    }
+
 }

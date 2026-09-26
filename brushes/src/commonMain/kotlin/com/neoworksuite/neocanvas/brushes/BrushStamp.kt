@@ -18,6 +18,7 @@ data class BrushAssetRef(val id: String, val sha256: String) {
 
 data class BrushStamp(
     val shape: BrushAssetRef? = null,
+    val shapeVariants: List<BrushAssetRef> = emptyList(),
     val grain: BrushAssetRef? = null,
     val angleMode: StampAngleMode = StampAngleMode.Fixed,
     val angleDegrees: Float = 0f,
@@ -39,7 +40,15 @@ data class BrushStamp(
     val startTaper: Float = 0f,
     val endTaper: Float = 0f,
 ) {
+    val resolvedShapes: List<BrushAssetRef>
+        get() = shapeVariants.ifEmpty { listOfNotNull(shape) }
+
     init {
+        require(shapeVariants.size <= 8) { "A brush can declare at most eight shape variants." }
+        require(shapeVariants.distinct() == shapeVariants) { "Shape variants must not contain duplicates." }
+        require(shape == null || shapeVariants.isEmpty() || shape in shapeVariants) {
+            "The primary shape must be included in the declared shape variants."
+        }
         require(angleDegrees.isFinite() && angleDegrees in -360f..360f) { "Stamp angle must be finite and between -360 and 360 degrees." }
         requireNormalized("Angle jitter", angleJitter)
         require(scaleX.isFinite() && scaleX in .05f..8f) { "Stamp horizontal scale must be between 0.05 and 8." }

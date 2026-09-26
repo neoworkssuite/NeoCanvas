@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class NeoBrushCodecTest {
     @Test
@@ -68,4 +69,62 @@ class NeoBrushCodecTest {
         assertEquals(brush, NeoBrushCodec.decode(NeoBrushCodec.encode(brush)))
         assertNull(NeoBrushCodec.decode(NeoBrushCodec.encode(BuiltInBrushes.ink)).stamp)
     }
+    @Test
+    fun v3_round_trip_preserves_description_shape_variants_and_grain() {
+        val first = BrushAssetRef("leaf-a", "a".repeat(64))
+        val second = BrushAssetRef("leaf-b", "b".repeat(64))
+        val stamp = BrushStamp(
+            shape = first,
+            shapeVariants = listOf(first, second),
+            grain = BrushAssetRef("paper-grain", "c".repeat(64)),
+            angleMode = StampAngleMode.DirectionJitter,
+        )
+        val brush = BuiltInBrushes.ink.copy(
+            version = 3,
+            description = "Directional leaves with a dry paper grain.",
+            stamp = stamp,
+        )
+
+        val encoded = NeoBrushCodec.encode(brush)
+        assertTrue(encoded.decodeToString().startsWith("NEOCANVAS_BRUSH=3\n"))
+        assertEquals(brush, NeoBrushCodec.decode(encoded))
+    }
+
+    @Test
+    fun v1_and_v2_decode_with_v3_defaults() {
+        val v1 = NeoBrushCodec.decode(NeoBrushCodec.encode(BuiltInBrushes.ink.copy(version = 1)))
+        val shape = BrushAssetRef("legacy-shape", "d".repeat(64))
+        val v2Brush = BuiltInBrushes.ink.copy(version = 2, stamp = BrushStamp(shape = shape))
+        val v2 = NeoBrushCodec.decode(NeoBrushCodec.encode(v2Brush))
+
+        assertEquals("", v1.description)
+        assertEquals(emptyList(), v1.stamp?.resolvedShapes ?: emptyList())
+        assertEquals("", v2.description)
+        assertEquals(listOf(shape), v2.stamp?.resolvedShapes)
+    }
+
+    @Test
+    fun malformed_v3_shape_variants_are_rejected() {
+        val shape = BrushAssetRef("leaf-a", "a".repeat(64))
+        val brush = BuiltInBrushes.ink.copy(
+            version = 3,
+            description = "Leaf",
+            stamp = BrushStamp(shape = shape, shapeVariants = listOf(shape)),
+        )
+        val encoded = NeoBrushCodec.encode(brush).decodeToString()
+
+        assertFailsWith<IllegalArgumentException> {
+            NeoBrushCodec.decode(encoded.replace(
+                "stamp.shapeVariants=leaf-a:${"a".repeat(64)}",
+                "stamp.shapeVariants=leaf-a:",
+            ).encodeToByteArray())
+        }
+        assertFailsWith<IllegalArgumentException> {
+            NeoBrushCodec.decode(encoded.replace(
+                "stamp.shapeVariants=leaf-a:${"a".repeat(64)}",
+                "stamp.shapeVariants=",
+            ).encodeToByteArray())
+        }
+    }
+
 }

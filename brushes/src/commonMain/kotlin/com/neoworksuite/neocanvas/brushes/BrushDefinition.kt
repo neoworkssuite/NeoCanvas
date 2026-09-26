@@ -43,6 +43,7 @@ data class BrushDynamics(
 data class BrushDefinition(
     val id: String,
     val name: String,
+    val description: String = "",
     val spacing: Float,
     val baseSize: Float,
     val opacity: Float,
@@ -58,11 +59,13 @@ data class BrushDefinition(
     init {
         require(id.isNotBlank()) { "Brush id must not be blank." }
         require(name.isNotBlank()) { "Brush name must not be blank." }
+        require(description.length <= 240) { "Brush description must not exceed 240 characters." }
         require(spacing.isFinite() && spacing > 0f) { "Brush spacing must be positive and finite." }
         require(baseSize.isFinite() && baseSize > 0f) { "Brush base size must be positive and finite." }
         require(opacity.isFinite() && opacity in 0f..1f) { "Brush opacity must be between 0 and 1." }
         require(version > 0) { "Brush version must be positive." }
         require(stamp == null || version >= 2) { "Image stamps require brush version 2 or newer." }
+        require(stamp?.shapeVariants.isNullOrEmpty() || version >= 3) { "Shape variants require brush version 3 or newer." }
         require(pressureSize in 0f..1f && pressureOpacity in 0f..1f) { "Pressure response must be between zero and one." }
         require(categoryId.isNotBlank()) { "Brush category id must not be blank." }
     }
