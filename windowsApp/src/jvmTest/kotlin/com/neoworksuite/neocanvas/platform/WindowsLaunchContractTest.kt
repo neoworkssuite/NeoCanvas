@@ -9,6 +9,7 @@ class WindowsLaunchContractTest {
     @Test fun runtime_application_is_not_the_installer() {
         assertEquals("windowsApp/build/compose/binaries/main/app/NeoCanvas/NeoCanvas.exe", WindowsLaunchContract.runtimeRelativePath)
         assertEquals("windowsApp/build/compose/binaries/main/exe/NeoCanvas-1.0.0.exe", WindowsLaunchContract.installerRelativePath)
+        assertEquals(2, WindowsLaunchContract.buildNumber)
         assertNotEquals(WindowsLaunchContract.runtimeRelativePath, WindowsLaunchContract.installerRelativePath)
     }
 

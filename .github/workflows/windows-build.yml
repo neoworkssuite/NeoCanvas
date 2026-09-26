@@ -3,6 +3,8 @@ name: NeoCanvas Windows CI
 on:
   push:
     branches:
+      - main
+      - ipad-dev
       - windows-parity-foundation
       - windows-**
   pull_request:

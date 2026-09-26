@@ -3,6 +3,7 @@ name: NeoCanvas macOS CI
 on:
   push:
     branches:
+      - main
       - ipad-dev
       - macos-**
     paths:
