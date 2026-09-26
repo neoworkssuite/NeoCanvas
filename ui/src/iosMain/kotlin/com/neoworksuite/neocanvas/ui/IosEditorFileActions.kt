@@ -99,6 +99,7 @@ internal class IosEditorFileActions(
     private val brushLibraryPath: String get() = join(libraryDirectory, "brush-library.txt")
     private val preferencesPath: String get() = join(libraryDirectory, "preferences.txt")
     private val galleryStackPath: String get() = join(libraryDirectory, "gallery-stack.txt")
+    private val diagnosticLogPath: String get() = join(libraryDirectory, "diagnostics.log")
     private val fontsDirectory: String get() = join(libraryDirectory, "Fonts")
     private val recoveryPath: String get() = join(recoveryDirectory, "last-session.neocanvas")
 
@@ -499,6 +500,13 @@ internal class IosEditorFileActions(
         return if (writeBytes(preferencesPath, text.encodeToByteArray())) SaveResult.Success
             else SaveResult.Failure("Could not save NeoCanvas preferences on this iPad.")
     }
+
+    override fun loadDiagnosticLog(): String =
+        NSData.dataWithContentsOfFile(diagnosticLogPath)?.toByteArray()?.decodeToString().orEmpty()
+
+    override fun saveDiagnosticLog(text: String): SaveResult =
+        if (writeBytes(diagnosticLogPath, text.encodeToByteArray())) SaveResult.Success
+        else SaveResult.Failure("Could not save the diagnostic log on this iPad.")
 
     override fun exportPng(
         document: CanvasDocument,

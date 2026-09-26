@@ -19,4 +19,10 @@ class ImmediateStrokePreviewTest {
     fun live_width_never_disappears() {
         assertEquals(1f, immediateStrokeWidth(.1f, .05f, 1f), .001f)
     }
+
+    @Test
+    fun live_alpha_matches_brush_pressure_without_segment_accumulation() {
+        assertEquals(.4f, immediateStrokeAlpha(.8f, .5f, 1f), .001f)
+        assertEquals(.8f, immediateStrokeAlpha(.8f, .5f, 0f), .001f)
+    }
 }

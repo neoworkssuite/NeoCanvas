@@ -1689,6 +1689,24 @@ class EditorStateTest {
     }
 
     @Test
+    fun deleting_a_painted_layer_then_adding_a_replacement_commits_new_strokes() {
+        val state = EditorState(DocumentHistory(CanvasDocument.blank(100, 100)))
+        state.addLayer()
+        state.recordStroke(listOf(DrawPoint(10f, 10f), DrawPoint(20f, 20f)), stabilize = false)
+        state.addLayer()
+        state.recordStroke(listOf(DrawPoint(50f, 50f), DrawPoint(60f, 60f)), stabilize = false)
+
+        state.deleteActiveLayer()
+        state.addLayer()
+        val replacementId = state.activeLayerId!!
+        state.recordStroke(listOf(DrawPoint(30f, 30f), DrawPoint(40f, 40f)), stabilize = false)
+
+        val replacement = state.document.layers.first { it.id == replacementId }
+        assertTrue((replacement.payload as LayerPayload.Raster).tileAddresses.isNotEmpty())
+        assertTrue(state.tileStore.keys.any { it.layerId == replacementId })
+    }
+
+    @Test
     fun stroke_updates_tile_store_document_patch_and_visual_undo_history() {
         val state = EditorState(
             DocumentHistory(

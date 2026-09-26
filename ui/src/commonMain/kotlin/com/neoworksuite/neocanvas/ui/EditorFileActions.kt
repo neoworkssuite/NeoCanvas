@@ -118,6 +118,9 @@ interface EditorFileActions {
     fun loadPreferences(): Map<String, String> = emptyMap()
     fun savePreferences(values: Map<String, String>): SaveResult =
         SaveResult.Failure("Preference storage is unavailable in this host.")
+    fun loadDiagnosticLog(): String = ""
+    fun saveDiagnosticLog(text: String): SaveResult =
+        SaveResult.Failure("Diagnostic log storage is unavailable in this host.")
     fun save(document: CanvasDocument, tiles: Map<TileAddress, ByteArray>): SaveResult
     fun open(): LoadResult
     fun exportPng(document: CanvasDocument, tiles: Map<TileAddress, ByteArray>): SaveResult

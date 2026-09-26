@@ -73,7 +73,10 @@ fun LayersPanel(state: EditorState, modifier: Modifier = Modifier) {
     val visibleLayers = state.document.layers.asReversed().filterNot { it.groupId in collapsedGroups }
 
     Column(modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.fillMaxWidth().padding(end = 42.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text("LAYERS", color = NeoCanvasColors.paper, fontSize = 11.sp, letterSpacing = 1.2.sp)
             Spacer(Modifier.weight(1f))
             Text(

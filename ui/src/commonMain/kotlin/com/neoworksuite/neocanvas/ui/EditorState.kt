@@ -98,6 +98,10 @@ class EditorState(
     var brushAssetResolver: BrushAssetResolver = BuiltInBrushAssets.resolver,
 ) {
     internal val brushPreviewCache = BrushPreviewCache()
+    internal val diagnosticLog = DiagnosticLog(
+        initial = runCatching { fileActions.loadDiagnosticLog() }.getOrDefault(""),
+        persist = { text -> runCatching { fileActions.saveDiagnosticLog(text) } },
+    )
     private var documentRevision by mutableIntStateOf(0)
     private var editVersion by mutableIntStateOf(0)
     private var savedVersion by mutableIntStateOf(0)
@@ -2872,6 +2876,23 @@ class EditorState(
     var inspectorPanel: InspectorPanel by mutableStateOf(InspectorPanel.Layers)
     var inspectorVisible: Boolean by mutableStateOf(false)
     var settingsVisible: Boolean by mutableStateOf(false)
+    var diagnosticsVisible: Boolean by mutableStateOf(false)
+
+    val diagnosticText: String
+        get() = diagnosticLog.text
+
+    fun openDiagnostics() {
+        diagnosticLog.append(
+            "Diagnostics opened · document=${document.id} · layers=${document.layers.size} · " +
+                "active=${activeLayerId ?: "none"} · tiles=${tileStore.keys.size}",
+        )
+        diagnosticsVisible = true
+    }
+
+    fun clearDiagnostics() {
+        diagnosticLog.clear()
+        statusMessage = "Diagnostic log cleared"
+    }
 
     // Workspace preferences. Settings UI owns these rather than scattering toggles across tool panels.
     var fingerPaintingEnabled: Boolean by mutableStateOf(true)
@@ -2938,10 +2959,22 @@ class EditorState(
     var panX: Float by mutableFloatStateOf(0f)
     var panY: Float by mutableFloatStateOf(0f)
     var viewRotationDegrees: Float by mutableFloatStateOf(0f)
-    var statusMessage: String? by mutableStateOf(null)
+    private var statusMessageState: String? by mutableStateOf(null)
+    var statusMessage: String?
+        get() = statusMessageState
+        set(value) {
+            statusMessageState = value
+            if (value != null && listOf("fail", "error", "could not", "crash").any { value.contains(it, true) }) {
+                diagnosticLog.append("Error · $value")
+            }
+        }
     var palette: List<String> by mutableStateOf(emptyList())
         private set
     init {
+        diagnosticLog.append(
+            "Session started · NeoCanvas ${NeoCanvasReleaseInfo.marketingVersion} " +
+                "build ${NeoCanvasReleaseInfo.buildNumber}",
+        )
         refreshImportedFonts()
         try {
             val preferences = fileActions.loadPreferences()
@@ -3350,14 +3383,20 @@ class EditorState(
         objectEditorVisible = false
         recentStrokesVisible = false
         activateTool(if (brush == BuiltInBrushes.eraser) Tool.Eraser else Tool.Brush)
+        diagnosticLog.append("Layer added · id=$id · layers=${document.layers.size}")
         statusMessage = "Paint layer added — draw with Apple Pencil or touch"
     }
     fun deleteActiveLayer() {
         val id = activeLayerId ?: return
         if (!wakeLayer(id)) return
-        if (document.layers.any { it.id == id && it.locked }) { statusMessage = "Unlock this layer before deleting it"; return }
+        val layer = document.layers.firstOrNull { it.id == id } ?: return
+        if (layer.locked) { statusMessage = "Unlock this layer before deleting it"; return }
         if (document.layers.size <= 1) { statusMessage = "Keep at least one drawing layer."; return }
-        execute(DeleteLayer(id))
+        val before = tileStore.snapshot()
+        tileStore.removeLayer(id)
+        layer.mask?.let { tileStore.removeLayer(it.id) }
+        execute(DeleteLayer(id), before)
+        diagnosticLog.append("Layer deleted · id=$id · removedTiles=${before.keys.count { it.layerId == id }}")
         selectedObjectLayerIds = selectedObjectLayerIds - id
         if (maskEditingLayerId == id) maskEditingLayerId = null
         activeLayerId = document.layers.lastOrNull()?.id

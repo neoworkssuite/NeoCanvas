@@ -49,6 +49,17 @@ class WindowsEditorFileActions(
     )
     private val brushLibraryFile get() = File(libraryDirectory.parentFile, "brush-library.bin")
     private val fontsDirectory get() = File(libraryDirectory.parentFile, "Fonts")
+    private val diagnosticLogFile get() = File(libraryDirectory.parentFile, "diagnostics.log")
+
+    override fun loadDiagnosticLog(): String = runCatching { diagnosticLogFile.readText() }.getOrDefault("")
+
+    override fun saveDiagnosticLog(text: String): SaveResult = try {
+        diagnosticLogFile.parentFile?.mkdirs()
+        diagnosticLogFile.writeText(text)
+        SaveResult.Success
+    } catch (error: Exception) {
+        SaveResult.Failure("Could not save diagnostics: " + (error.message ?: "storage error"))
+    }
 
     override fun openFontFile(onResult: (Result<ImportedFontFile?>) -> Unit) {
         onResult(runCatching {

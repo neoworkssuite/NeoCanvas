@@ -75,6 +75,15 @@ fun GalleryScreen(
         )
     }
     var stackOpen by remember { mutableStateOf(false) }
+    var stackName by remember {
+        mutableStateOf(
+            galleryStackName(
+                runCatching { actions.loadPreferences()[GALLERY_STACK_NAME_KEY] }.getOrNull(),
+            ),
+        )
+    }
+    var renameStack by remember { mutableStateOf(false) }
+    var stackRenameText by remember { mutableStateOf(stackName) }
 
     fun saveStack(next: Set<String>, success: String): Boolean {
         val clean = reconcileGalleryStack(next, documents)
@@ -117,11 +126,17 @@ fun GalleryScreen(
             ) {
                 Image(neoCanvasIcon(), "NeoCanvas", Modifier.size(44.dp))
                 Column {
-                    Text(if (stackOpen) "Stack" else "Gallery", color = NeoCanvasColors.paper, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+                    Text(if (stackOpen) stackName else "Gallery", color = NeoCanvasColors.paper, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
                     Text("Local artwork on this device", color = NeoCanvasColors.muted, fontSize = 11.sp)
                 }
                 Spacer(Modifier.weight(1f))
-                if (stackOpen) GalleryAction("Back") { stackOpen = false; selected = emptySet() }
+                if (stackOpen) {
+                    GalleryAction("Back") { stackOpen = false; selected = emptySet() }
+                    GalleryAction("Rename stack") {
+                        stackRenameText = stackName
+                        renameStack = true
+                    }
+                }
                 GalleryAction("TestFlight") { showReleasePreview = true }
                 GalleryAction(if (selecting) "Done" else "Select") { selecting = !selecting; if (!selecting) selected = emptySet() }
                 GalleryAction("Open file") { onImportDocument() }
@@ -180,7 +195,15 @@ fun GalleryScreen(
                     verticalArrangement = Arrangement.spacedBy(18.dp),
                 ) {
                     if (!stackOpen && stackMembers.isNotEmpty()) item(key = "local-stack") {
-                        GalleryStackCard(stackMembers.size) { stackOpen = true }
+                        GalleryStackCard(
+                            name = stackName,
+                            count = stackMembers.size,
+                            onOpen = { stackOpen = true },
+                            onRename = {
+                                stackRenameText = stackName
+                                renameStack = true
+                            },
+                        )
                     }
                     items(visibleDocuments, key = { it }) { name ->
                         val thumbnail = remember(name, documents) {
@@ -258,6 +281,40 @@ fun GalleryScreen(
             dismissButton = { TextButton(onClick = { renameTarget = null }) { Text("Cancel") } },
         )
     }
+    if (renameStack) AlertDialog(
+        onDismissRequest = { renameStack = false },
+        containerColor = NeoCanvasColors.panel,
+        title = { Text("Rename stack", color = NeoCanvasColors.paper) },
+        text = {
+            OutlinedTextField(
+                value = stackRenameText,
+                onValueChange = { stackRenameText = it.take(60) },
+                singleLine = true,
+                label = { Text("Stack name") },
+                colors = studioTextFieldColors(),
+            )
+        },
+        confirmButton = {
+            TextButton(
+                enabled = stackRenameText.trim().isNotEmpty(),
+                onClick = {
+                    val nextName = galleryStackName(stackRenameText)
+                    val preferences = runCatching { actions.loadPreferences().toMutableMap() }
+                        .getOrDefault(mutableMapOf())
+                    preferences[GALLERY_STACK_NAME_KEY] = nextName
+                    when (val result = actions.savePreferences(preferences)) {
+                        SaveResult.Success -> {
+                            stackName = nextName
+                            renameStack = false
+                            message = "Renamed stack"
+                        }
+                        is SaveResult.Failure -> message = result.message
+                    }
+                },
+            ) { Text("Rename") }
+        },
+        dismissButton = { TextButton(onClick = { renameStack = false }) { Text("Cancel") } },
+    )
     if (deleteTargets.isNotEmpty()) AlertDialog(
         onDismissRequest = { deleteTargets = emptySet() }, containerColor = NeoCanvasColors.panel,
         title = { Text("Delete ${deleteTargets.size} artwork${if (deleteTargets.size == 1) "" else "s"}?", color = NeoCanvasColors.paper) },
@@ -285,6 +342,11 @@ fun GalleryScreen(
 internal fun galleryPrimaryActionLabels(): List<String> = listOf("TestFlight", "Select", "Open file", "New artwork")
 
 internal fun galleryEmptyStateMessage(): String = "Create a canvas. Everything stays local."
+
+private const val GALLERY_STACK_NAME_KEY = "galleryStackName"
+
+internal fun galleryStackName(value: String?): String =
+    value?.trim()?.take(60)?.takeIf(String::isNotEmpty) ?: "Stack"
 
 internal data class GalleryReleasePreviewContent(
     val title: String,
@@ -475,7 +537,7 @@ private fun GalleryArtworkCard(
 }
 
 @Composable
-private fun GalleryStackCard(count: Int, onOpen: () -> Unit) {
+private fun GalleryStackCard(name: String, count: Int, onOpen: () -> Unit, onRename: () -> Unit) {
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(NeoCanvasColors.panelRaised).clickable(onClick = onOpen)) {
         Box(Modifier.fillMaxWidth().aspectRatio(4f / 3f).background(Color(0xFF303946)), contentAlignment = Alignment.Center) {
             Image(neoCanvasIcon(), null, Modifier.size(82.dp))
@@ -483,7 +545,18 @@ private fun GalleryStackCard(count: Int, onOpen: () -> Unit) {
                 Text("$count", color = NeoCanvasColors.paper)
             }
         }
-        Text("Stack", color = NeoCanvasColors.paper, fontWeight = FontWeight.Medium, modifier = Modifier.padding(14.dp))
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(name, color = NeoCanvasColors.paper, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+            Text(
+                "Rename",
+                color = NeoCanvasColors.accent,
+                fontSize = 11.sp,
+                modifier = Modifier.clickable(onClick = onRename).padding(horizontal = 8.dp, vertical = 6.dp),
+            )
+        }
     }
 }
 

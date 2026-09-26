@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
@@ -2068,6 +2069,12 @@ internal fun immediateStrokeWidth(size: Float, pressure: Float, pressureSize: Fl
     return maxOf(1f, size.coerceAtLeast(.01f) * (1f - (1f - normalized) * response))
 }
 
+internal fun immediateStrokeAlpha(opacity: Float, pressure: Float, pressureOpacity: Float): Float {
+    val normalized = normalizedPressure(pressure)
+    val response = pressureOpacity.coerceIn(0f, 1f)
+    return opacity.coerceIn(0f, 1f) * (1f - (1f - normalized) * response)
+}
+
 private fun DrawScope.drawImmediateStrokePreview(
     points: List<DrawPoint>,
     color: Color,
@@ -2092,12 +2099,8 @@ private fun DrawScope.drawImmediateStrokePreview(
         }
     }
 
-    fun previewColor(pressure: Float): Color {
-        val normalized = normalizedPressure(pressure)
-        val response = pressureOpacity.coerceIn(0f, 1f)
-        val pressureAlpha = 1f - (1f - normalized) * response
-        return color.copy(alpha = opacity.coerceIn(0f, 1f) * pressureAlpha)
-    }
+    fun previewColor(pressure: Float): Color =
+        color.copy(alpha = immediateStrokeAlpha(opacity, pressure, pressureOpacity))
 
     if (points.size == 1) {
         val point = points.single()
@@ -2111,19 +2114,23 @@ private fun DrawScope.drawImmediateStrokePreview(
         return
     }
 
-    points.zipWithNext().forEach { (from, to) ->
-        val fromSamples = mirrored(from)
-        val toSamples = mirrored(to)
-        fromSamples.zip(toSamples).forEach { (mirroredFrom, mirroredTo) ->
-            val pressure = (mirroredFrom.pressure + mirroredTo.pressure) / 2f
-            drawLine(
-                color = previewColor(pressure),
-                start = Offset(mirroredFrom.x, mirroredFrom.y),
-                end = Offset(mirroredTo.x, mirroredTo.y),
-                strokeWidth = immediateStrokeWidth(size, pressure, pressureSize),
-                cap = StrokeCap.Round,
-            )
+    val firstSamples = mirrored(points.first())
+    val paths = firstSamples.map { sample ->
+        Path().apply { moveTo(sample.x, sample.y) }
+    }
+    points.drop(1).forEach { point ->
+        mirrored(point).forEachIndexed { index, sample ->
+            paths[index].lineTo(sample.x, sample.y)
         }
+    }
+    val averagePressure = points.fold(0f) { total, point -> total + point.pressure } / points.size
+    val style = Stroke(
+        width = immediateStrokeWidth(size, averagePressure, pressureSize),
+        cap = StrokeCap.Round,
+        join = StrokeJoin.Round,
+    )
+    paths.forEach { path ->
+        drawPath(path, previewColor(averagePressure), style = style)
     }
 }
 

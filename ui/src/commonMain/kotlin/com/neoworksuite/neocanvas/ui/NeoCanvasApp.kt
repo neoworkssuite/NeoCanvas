@@ -27,6 +27,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import com.neoworksuite.neocanvas.brushes.BuiltInBrushes
+import com.neoworksuite.neocanvas.renderer.BuiltInBrushAssets
+import com.neoworksuite.neocanvas.renderer.RasterColor
 import com.neoworksuite.neocanvas.core.store.LoadResult
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
@@ -34,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
@@ -92,6 +98,27 @@ fun NeoCanvasApp(
         while (true) {
             delay(30_000)
             if (state.autoRecoveryEnabled) state.autosaveRecovery()
+        }
+    }
+    LaunchedEffect(state) {
+        delay(800)
+        val width = 120
+        val height = 44
+        val color = RasterColor(238, 241, 245)
+        BuiltInBrushes.paintBrushes.forEach { brush ->
+            if (state.brushPreviewCache.cachedImage(brush, width, height, color) == null) {
+                val preview = withContext(Dispatchers.Default) {
+                    state.brushPreviewCache.renderPreview(
+                        brush,
+                        BuiltInBrushAssets.resolver,
+                        width,
+                        height,
+                        color,
+                    )
+                }
+                state.brushPreviewCache.storeImage(brush, width, height, color, preview)
+                delay(12)
+            }
         }
     }
     LaunchedEffect(
@@ -192,6 +219,7 @@ fun NeoCanvasApp(
             .onPreviewKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown || !event.isCtrlPressed) return@onPreviewKeyEvent false
                 when (event.key) {
+                    Key.D -> if (event.isShiftPressed) { state.openDiagnostics(); true } else false
                     Key.Z -> { state.undo(); true }
                     Key.Y -> { state.redo(); true }
                     else -> false
@@ -458,6 +486,7 @@ fun NeoCanvasApp(
                 )
             }
         }
+        if (state.diagnosticsVisible) DiagnosticLogDialog(state)
     }
 }
 

@@ -36,6 +36,15 @@ class AndroidEditorFileActions(private val localDirectory: File,
     override val supportsWorkbench = true
     override val supportsDeepLayers = true
     private var currentDocumentFile: File? = null
+    private val diagnosticLogFile get() = File(localDirectory, "diagnostics.log")
+    override fun loadDiagnosticLog(): String = runCatching { diagnosticLogFile.readText() }.getOrDefault("")
+    override fun saveDiagnosticLog(text: String): SaveResult = try {
+        diagnosticLogFile.parentFile?.mkdirs()
+        diagnosticLogFile.writeText(text)
+        SaveResult.Success
+    } catch (error: Exception) {
+        SaveResult.Failure("Could not save diagnostics: " + (error.message ?: "storage error"))
+    }
     override fun resetDocumentTarget() { currentDocumentFile = null }
     override fun listLocalDocuments(): List<String> {
         if (!localDirectory.exists()) return emptyList()
