@@ -54,7 +54,8 @@ class BrushLibraryState(
     val visibleBrushes: List<BrushDefinition>
         get() {
             if (query.isNotBlank()) return allBrushes.filter {
-                it.name.contains(query.trim(), true) || categories.firstOrNull { category -> category.id == it.categoryId }?.name?.contains(query.trim(), true) == true
+                it.name.contains(query.trim(), true) || it.description.contains(query.trim(), true) ||
+                    categories.firstOrNull { category -> category.id == it.categoryId }?.name?.contains(query.trim(), true) == true
             }
             return when (shelf) {
                 BrushShelf.All -> allBrushes
@@ -188,6 +189,11 @@ class BrushLibraryState(
         selectedCategoryId = null
         shelf = next
     }
+}
+
+fun brushLaunchMessage(brushCount: Int): String {
+    require(brushCount >= 0)
+    return "$brushCount launch brushes · More original brushes will arrive in future updates."
 }
 
 private data class BrushLibrarySnapshot(

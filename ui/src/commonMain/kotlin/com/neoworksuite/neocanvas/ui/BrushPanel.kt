@@ -179,6 +179,12 @@ fun BrushPanel(state: EditorState, modifier: Modifier = Modifier) {
                 }
             }
         }
+        Text(
+            brushLaunchMessage(BuiltInBrushes.paintBrushes.size),
+            color = NeoCanvasColors.faint,
+            fontSize = 8.sp,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 3.dp),
+        )
     }
 }
 
@@ -284,17 +290,17 @@ private fun BrushPreset(
     Row(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
             .background(if (selected) NeoCanvasColors.accent.copy(alpha = .16f) else NeoCanvasColors.chrome)
-            .clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 7.dp),
+            .clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         StrokePreview(brush, previewCache, assetResolver, Modifier.width(92.dp).height(34.dp))
         Column(Modifier.weight(1f).padding(start = 9.dp)) {
             Text(brush.name, color = NeoCanvasColors.paper, fontSize = 12.sp, maxLines = 1)
             Text(
-                if (selected) "Selected · tap again for Brush Studio" else brush.tip.name,
-                color = if (selected) NeoCanvasColors.accent else NeoCanvasColors.faint,
+                brush.description,
+                color = NeoCanvasColors.muted,
                 fontSize = 8.sp,
-                maxLines = 1,
+                maxLines = 2,
             )
         }
         if (selected) {

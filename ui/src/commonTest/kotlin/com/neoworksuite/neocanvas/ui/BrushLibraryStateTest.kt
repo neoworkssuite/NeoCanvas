@@ -14,6 +14,23 @@ import kotlin.test.assertTrue
 
 class BrushLibraryStateTest {
     @Test
+    fun stale_generated_favourites_and_recents_are_discarded_during_restore() {
+        val snapshot = """
+            NEOCANVAS_BRUSH_LIBRARY=2
+            favourite=neo.pencils.precision-pencil
+            favourite=neo.pencil
+            recent=neo.foliage.leaf-cluster
+            recent=neo.ink
+        """.trimIndent().encodeToByteArray()
+        val state = BrushLibraryState(initialSnapshot = snapshot)
+
+        state.showFavourites()
+        assertEquals(listOf("neo.pencil"), state.visibleBrushes.map { it.id })
+        state.showRecent()
+        assertEquals(listOf("neo.ink"), state.visibleBrushes.map { it.id })
+    }
+
+    @Test
     fun usage_persistence_encoding_can_be_deferred_off_the_selection_path() {
         var deferred: (() -> ByteArray)? = null
         var persisted: ByteArray? = null
