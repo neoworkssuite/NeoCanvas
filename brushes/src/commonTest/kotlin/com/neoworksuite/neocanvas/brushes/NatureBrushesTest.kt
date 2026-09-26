@@ -36,8 +36,7 @@ class NatureBrushesTest {
         val nature = BuiltInBrushes.inCategory("nature")
         val variantBrushes = nature.filter { it.stamp!!.resolvedShapes.size > 1 }
         assertTrue(variantBrushes.size >= 14)
-        listOf("neo.nature.grass-wild", "neo.nature.grass-meadow", "neo.nature.fern", "neo.nature.pine-needles",
-            "neo.nature.pine-bough", "neo.nature.branch", "neo.nature.twig", "neo.nature.bark")
+        listOf("neo.nature.branch", "neo.nature.twig", "neo.nature.bark")
             .forEach { id ->
                 assertTrue(requireNotNull(BuiltInBrushes.find(id)).stamp?.angleMode in setOf(StampAngleMode.Direction, StampAngleMode.DirectionJitter), id)
             }

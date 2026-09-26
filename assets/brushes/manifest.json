@@ -175,7 +175,7 @@
       "source": "source/shapes/hedge-a.png",
       "width": 64,
       "height": 64,
-      "sha256": "5e3e5fe0bbe659f0ef5aa38cff2aaf853d6185ebbb928bfab10b3f6a2b2ec0d8"
+      "sha256": "f42ce26a6279786ccb74ec7b7a43b88cba46799bfabcaabc8836858c9b9d4575"
     },
     {
       "id": "hedge-b",
@@ -183,7 +183,7 @@
       "source": "source/shapes/hedge-b.png",
       "width": 64,
       "height": 64,
-      "sha256": "8ccafe4d017ca523af64dc97cf5867af097011cc386fb303bf531103e88b3390"
+      "sha256": "83f94411660aae70778b5524d84e69dcf95a901eafad71866eb4fc5b78d01f20"
     },
     {
       "id": "leaf-broad-a",
@@ -231,7 +231,7 @@
       "source": "source/shapes/leaf-oak-a.png",
       "width": 64,
       "height": 64,
-      "sha256": "c8b4891592e3753d03e46f5d1bd2a2c7dc66f086618e66dbbd9695acad9dd622"
+      "sha256": "dbe19b2c0f778da5909285f00b52145ecd9f39b23aba84975b10321b3cf5e413"
     },
     {
       "id": "leaf-oak-b",
@@ -239,7 +239,7 @@
       "source": "source/shapes/leaf-oak-b.png",
       "width": 64,
       "height": 64,
-      "sha256": "7ef9bcd11373d7d86d5891a592d8c8817ddf3e27dd4762e33184c0c0e09ff0c8"
+      "sha256": "f532556b121e2fdbd6de7b8df303f08821d2e69733f766cc797644588f689dd8"
     },
     {
       "id": "leaf-tropical-a",
@@ -263,7 +263,7 @@
       "source": "source/shapes/moss-a.png",
       "width": 64,
       "height": 64,
-      "sha256": "19c01839b66727b25e43c5905b9ce5fb5aab28b734328803942678b7b266f703"
+      "sha256": "de824111abdad7090f15df39dd6e19825c072c433ae970824b49aeb2160dc0f2"
     },
     {
       "id": "moss-b",
@@ -271,7 +271,7 @@
       "source": "source/shapes/moss-b.png",
       "width": 64,
       "height": 64,
-      "sha256": "f6c76af625f7ac0eab00c8b400e2b93990d6b923d222bc79d6f95031e43430eb"
+      "sha256": "10a95ce100eec14ed198f137afc591d3204aaa5edede1e445431d28d9ad7a8fe"
     },
     {
       "id": "pine-bough-a",

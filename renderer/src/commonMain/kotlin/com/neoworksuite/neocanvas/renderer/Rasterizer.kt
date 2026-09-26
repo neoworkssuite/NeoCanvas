@@ -198,7 +198,7 @@ object Rasterizer {
         val firstTangent = segmentLengths.indexOfFirst { it > 0.0 }
             .takeIf { it >= 0 }?.let(::segmentTangent) ?: 0f
         val stamps = ArrayList<RasterStampSample>()
-        stamps += RasterStampSample(points.first(), firstTangent, 0f)
+        stamps += RasterStampSample(points.first(), firstTangent, if (points.size == 1) .5f else 0f)
         var distanceUntilStamp = spacing.toDouble()
         var traversed = 0.0
         points.zipWithNext().forEachIndexed { index, (from, to) ->
@@ -226,7 +226,7 @@ object Rasterizer {
             val lastTangent = segmentLengths.indexOfLast { it > 0.0 }
                 .takeIf { it >= 0 }?.let(::segmentTangent) ?: firstTangent
             stamps += RasterStampSample(points.last(), lastTangent, 1f)
-        } else if (stamps.isNotEmpty()) {
+        } else if (points.size > 1 && stamps.isNotEmpty()) {
             val last = stamps.last()
             stamps[stamps.lastIndex] = last.copy(progress = 1f)
         }

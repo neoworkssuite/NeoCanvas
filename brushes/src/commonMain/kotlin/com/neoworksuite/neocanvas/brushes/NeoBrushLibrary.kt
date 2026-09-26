@@ -44,7 +44,12 @@ internal fun authoredBrush(
     pressureStampCount: Float = 0f,
     startTaper: Float = 0f,
     endTaper: Float = 0f,
-): BrushDefinition = BrushDefinition(
+): BrushDefinition {
+    val needsStamp = shapes.isNotEmpty() || grain != null || angleMode != StampAngleMode.Fixed || angleDegrees != 0f ||
+        angleJitter != 0f || scaleX != 1f || scaleY != 1f || scatterAlong != 0f || scatterAcross != 0f ||
+        stampCount != 1 || stampCountJitter != 0f || grainScale != 1f || grainMovement != GrainMovement.Stamp ||
+        pressureScatter != 0f || pressureStampCount != 0f || startTaper != 0f || endTaper != 0f
+    return BrushDefinition(
     id = id,
     name = name,
     description = description,
@@ -57,8 +62,8 @@ internal fun authoredBrush(
     pressureOpacity = pressureOpacity,
     categoryId = category,
     dynamics = dynamics,
-    stamp = if (shapes.isEmpty()) null else BrushStamp(
-        shape = shapes.first(),
+    stamp = if (needsStamp) BrushStamp(
+        shape = shapes.firstOrNull(),
         shapeVariants = shapes,
         grain = grain,
         angleMode = angleMode,
@@ -77,5 +82,6 @@ internal fun authoredBrush(
         pressureStampCount = pressureStampCount,
         startTaper = startTaper,
         endTaper = endTaper,
-    ),
-)
+    ) else null,
+    )
+}

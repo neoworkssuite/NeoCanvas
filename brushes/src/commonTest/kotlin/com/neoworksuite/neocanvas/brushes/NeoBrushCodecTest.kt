@@ -67,7 +67,8 @@ class NeoBrushCodecTest {
         val brush = BuiltInBrushes.ink.copy(version = 2, description = "", stamp = stamp)
 
         assertEquals(brush, NeoBrushCodec.decode(NeoBrushCodec.encode(brush)))
-        assertNull(NeoBrushCodec.decode(NeoBrushCodec.encode(BuiltInBrushes.ink)).stamp)
+        val legacy = BuiltInBrushes.ink.copy(version = 1, description = "", stamp = null)
+        assertNull(NeoBrushCodec.decode(NeoBrushCodec.encode(legacy)).stamp)
     }
     @Test
     fun v3_round_trip_preserves_description_shape_variants_and_grain() {
@@ -92,7 +93,7 @@ class NeoBrushCodecTest {
 
     @Test
     fun v1_and_v2_decode_with_v3_defaults() {
-        val v1 = NeoBrushCodec.decode(NeoBrushCodec.encode(BuiltInBrushes.ink.copy(version = 1, description = "")))
+        val v1 = NeoBrushCodec.decode(NeoBrushCodec.encode(BuiltInBrushes.ink.copy(version = 1, description = "", stamp = null)))
         val shape = BrushAssetRef("legacy-shape", "d".repeat(64))
         val v2Brush = BuiltInBrushes.ink.copy(version = 2, description = "", stamp = BrushStamp(shape = shape))
         val v2 = NeoBrushCodec.decode(NeoBrushCodec.encode(v2Brush))
@@ -125,6 +126,14 @@ class NeoBrushCodecTest {
                 "stamp.shapeVariants=",
             ).encodeToByteArray())
         }
+    }
+
+    @Test
+    fun v3_round_trip_allows_a_procedural_stamp_with_grain_and_no_shape() {
+        val brush = BuiltInBrushes.ink.copy(
+            stamp = BrushStamp(grain = BrushAssetRef("paper-grain", "c".repeat(64))),
+        )
+        assertEquals(brush, NeoBrushCodec.decode(NeoBrushCodec.encode(brush)))
     }
 
 }

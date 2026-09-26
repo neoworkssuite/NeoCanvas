@@ -125,7 +125,10 @@ object NeoBrushCodec {
         }
         val shape = if (header == V1_HEADER) null else asset("stamp.shape")
         val grain = if (header == V1_HEADER) null else asset("stamp.grain")
-        val variants = if (isV3 && stampPresent) decodeVariants(value("stamp.shapeVariants")) else emptyList()
+        val variants = if (isV3 && stampPresent) {
+            val encodedVariants = value("stamp.shapeVariants")
+            if (encodedVariants.isEmpty() && shape == null) emptyList() else decodeVariants(encodedVariants)
+        } else emptyList()
         if (isV3 && !stampPresent) {
             require(shape == null && grain == null && variants.isEmpty()) { "A stamp-free brush cannot declare assets." }
         }

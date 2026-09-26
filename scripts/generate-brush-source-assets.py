@@ -108,12 +108,42 @@ def branch(a: list[int], variant: int, twig: bool) -> None:
     for i,(x,y) in enumerate(points[1:-1]):
         side=-1 if (i+variant)%2 else 1; line(a,x,y,x+18,y+side*(22+i*4),2.4 if not twig else 1.3,.5,225)
 
+def small_leaf(a: list[int], cx: float, cy: float, angle: float, length: float, width: float, value: int, lobed: bool=False) -> None:
+    ux,uy=math.cos(angle),math.sin(angle); nx,ny=-uy,ux
+    for step in range(25):
+        t=step/24; along=(t-.5)*length
+        profile=math.sin(math.pi*t)*width
+        if lobed: profile *= .82 + .18*math.sin(math.pi*t*7)**2
+        line(a,cx+ux*along+nx*profile,cy+uy*along+ny*profile,
+             cx+ux*along-nx*profile,cy+uy*along-ny*profile,.65,value=value)
+    line(a,cx-ux*length*.56,cy-uy*length*.56,cx+ux*length*.48,cy+uy*length*.48,.65,.35,255)
+
 def clustered(a: list[int], variant: int, moss: bool=False, hedge: bool=False) -> None:
     rng=random.Random(400+variant+(20 if moss else 0)+(40 if hedge else 0))
-    count=22 if moss else (14 if hedge else 9)
-    for _ in range(count):
-        cx=rng.uniform(20,108); cy=rng.uniform(40 if hedge else 28,100); r=rng.uniform(5,12 if moss else 18)
-        disc(a,cx,cy,r,180+rng.randrange(76))
+    if moss:
+        for i in range(9):
+            root_x=18+i*11+rng.uniform(-3,3); root_y=104+rng.uniform(-3,3)
+            tip_x=root_x+rng.uniform(-12,12); tip_y=rng.uniform(38,82)
+            line(a,root_x,root_y,tip_x,tip_y,1.5,.45,205+rng.randrange(45))
+            for side in (-1,1):
+                t=rng.uniform(.35,.8); x=root_x+(tip_x-root_x)*t; y=root_y+(tip_y-root_y)*t
+                length=rng.uniform(9,17); angle=-math.pi/2+side*rng.uniform(.65,1.05)
+                line(a,x,y,x+math.cos(angle)*length,y+math.sin(angle)*length,1.1,.35,210+rng.randrange(40))
+                disc(a,x+math.cos(angle)*length,y+math.sin(angle)*length,rng.uniform(1.5,3),225)
+            disc(a,tip_x,tip_y,rng.uniform(2,4),235)
+    elif hedge:
+        line(a,15,78+variant*5,113,69-variant*4,1.7,1.1,190)
+        for i in range(12):
+            x=18+i*8+rng.uniform(-3,3); y=70+rng.uniform(-18,18)
+            angle=rng.uniform(-1.0,1.0) + (math.pi if i%2 else 0)
+            small_leaf(a,x,y,angle,rng.uniform(15,24),rng.uniform(4,7),205+rng.randrange(51))
+    else:
+        center=(62+variant*3,68-variant*2)
+        for i in range(7):
+            angle=(i/7)*math.pi*2+rng.uniform(-.18,.18)
+            distance=rng.uniform(13,30); cx=center[0]+math.cos(angle)*distance; cy=center[1]+math.sin(angle)*distance
+            line(a,center[0],center[1],cx,cy,1.2,.5,195)
+            small_leaf(a,cx,cy,angle,rng.uniform(24,36),rng.uniform(7,11),205+rng.randrange(51),lobed=True)
 
 def bark(a: list[int], variant: int) -> None:
     rng=random.Random(500+variant)
