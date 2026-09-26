@@ -19,6 +19,7 @@ kotlin {
 
     iosArm64()
     iosSimulatorArm64()
+    iosX64() // iPad Simulator on Intel development Macs.
 
     sourceSets {
         commonMain.dependencies {

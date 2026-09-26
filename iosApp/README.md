@@ -30,6 +30,8 @@ The preparation script:
 
 The Xcode build phase invokes `:ui:embedAndSignAppleFrameworkForXcode` and embeds NeoCanvasKit.
 
+The shared modules support both Apple Silicon (`iosSimulatorArm64`) and Intel (`iosX64`) iPad Simulator builds. Running the app in Simulator requires Metal support on the host; a VM without a Metal-capable graphics device can compile the app but cannot run the Compose UI.
+
 ## Release packaging
 
 The iPad host includes:

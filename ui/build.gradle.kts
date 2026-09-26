@@ -21,7 +21,8 @@ kotlin {
 
     val iosTargets = listOf(
         iosArm64(),
-        iosSimulatorArm64()
+        iosSimulatorArm64(),
+        iosX64() // iPad Simulator on Intel development Macs.
     )
 
     iosTargets.forEach { target ->
