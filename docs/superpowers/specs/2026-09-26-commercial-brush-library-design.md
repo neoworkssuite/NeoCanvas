@@ -87,6 +87,8 @@ Preview cache keys include brush ID, brush version, serialized settings hash, re
 
 Each row receives a wider, higher-contrast preview, brush name and concise behavior description. Selecting a brush displays a larger real preview. Brush Studio's test pad continues to offer interactive testing and uses the same resolver.
 
+For the internal TestFlight milestone, the library footer states: `48 launch brushes · More original brushes will arrive in future updates.` The count must be derived from the shipped catalogue if quality review removes a candidate. This informational message must not block drawing or imply that the included collection is unfinished.
+
 ## Seamless tiled canvas display
 
 Keep sparse 256×256 storage. Fix the artifact only in live compositing.
