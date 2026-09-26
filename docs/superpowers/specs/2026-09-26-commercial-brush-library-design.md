@@ -51,7 +51,7 @@ The categories appear in the table order, with Essentials selected initially. Se
 
 ## Brush model and runtime
 
-Introduce a new built-in brush asset catalogue owned by the `brushes` module. Each asset has a stable portable ID, SHA-256 reference and decoded coverage representation. Built-in and installed-pack assets resolve through one composite `BrushAssetResolver` supplied to every editor, preview, replay and test-pad rasterization call.
+Introduce stable built-in asset references owned by the `brushes` module and a decoded coverage catalogue owned by the `renderer` module, which already defines `BrushAsset` and `BrushAssetResolver`. Each asset has a stable portable ID and SHA-256 reference. Built-in and installed-pack assets resolve through one composite `BrushAssetResolver` supplied to every editor, preview, replay and test-pad rasterization call.
 
 Advance asset-backed built-ins to brush schema version 3 while continuing to decode version 1 and 2 definitions. Version 3 adds an ordered set of shape variants. A deterministic stamp selector chooses a variant from the stroke seed, stamp index and sub-stamp index, producing natural variety without making saved behavior nondeterministic.
 
@@ -73,7 +73,7 @@ Shape masks are monochrome coverage assets with transparent backgrounds. Organic
 
 Grain sources are seamless monochrome textures designed for graphite, chalk, dry paint, canvas, paper, bark, stone and organic breakup. Grain assets include padded or seamless borders so their repetition cannot introduce square edges.
 
-Editable source masks live in the repository as grayscale PNG files. A deterministic preparation step converts them into the renderer's bounded coverage format and verifies dimensions, hashes, non-empty coverage and declared references. The prepared coverage resources are packaged for every supported target, avoiding platform-dependent image decoding during a stroke. Generated binary pack artifacts are derived outputs rather than the only source.
+Editable source masks live in the repository as grayscale PNG files. A deterministic preparation step generates reference constants in `brushes` and compact coverage data in `renderer`, and verifies dimensions, hashes, non-empty coverage and declared references. Version-3 pack assets use the same deterministic, bounded `.neomask` coverage format through a renderer-owned codec. The prepared coverage resources are packaged for every supported target, avoiding platform-dependent image decoding during a stroke. Generated binary pack artifacts are derived outputs rather than the only source.
 
 No Procreate brush, source-library image, setting dump or proprietary artwork is imported. Procreate is used only as a product reference for the established shape-plus-grain model and truthful stroke previews.
 
