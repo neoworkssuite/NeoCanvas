@@ -300,3 +300,21 @@ Task 1 audit tooling and this document were committed as
 dispatched against that exact commit: fast validation completed successfully;
 full iPad validation was still running when Task 1's local contract closed and
 must be reconciled before the final report.
+
+## Consolidation result
+
+Final verification on 2026-09-26 established the following state:
+
+- Canonical `ipad-dev` is `455f9467762115244c3b6849f9206040b51a484b`.
+- [Canonical iPad run `36238763263`](https://github.com/neoworkssuite/NeoCanvas/actions/runs/36238763263)
+  passed fast validation and the complete simulator, unsigned physical ARM64,
+  smoke, extended visual, and artifact lane on that commit.
+- [Shared run `36237966317`](https://github.com/neoworkssuite/NeoCanvas/actions/runs/36237966317)
+  passed the unified shared validation contract.
+- A clean clone resolved default `main` to
+  `59d93a0f0384edd65c9fd763b437a9e7ca66e0e7`, `origin/ipad-dev` to the
+  canonical HEAD above, and the iPad and Windows preservation tags to their
+  recorded source commits.
+- Non-destructive migration notices were committed to `Canvas-Mac` at
+  `2ede1c6`, `Canvas_android` at `e3ba4b6`, and private `neoworks` at
+  `02e3ddc`. Each source remains available and unarchived.
