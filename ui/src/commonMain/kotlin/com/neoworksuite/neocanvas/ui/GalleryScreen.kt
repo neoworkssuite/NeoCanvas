@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,9 +14,12 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -61,6 +65,7 @@ fun GalleryScreen(
     var deleteTargets by remember { mutableStateOf(emptySet<String>()) }
     var preview by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
+    var showReleasePreview by remember { mutableStateOf(false) }
     var stackMembers by remember {
         mutableStateOf(
             reconcileGalleryStack(
@@ -117,6 +122,7 @@ fun GalleryScreen(
                 }
                 Spacer(Modifier.weight(1f))
                 if (stackOpen) GalleryAction("Back") { stackOpen = false; selected = emptySet() }
+                GalleryAction("TestFlight") { showReleasePreview = true }
                 GalleryAction(if (selecting) "Done" else "Select") { selecting = !selecting; if (!selecting) selected = emptySet() }
                 GalleryAction("Open file") { onImportDocument() }
                 Button(onClick = onNew) { Text("+  New artwork") }
@@ -273,11 +279,88 @@ fun GalleryScreen(
         }) { Text("Delete", color = Color(0xFFFF7777)) } },
         dismissButton = { TextButton(onClick = { deleteTargets = emptySet() }) { Text("Cancel") } },
     )
+    if (showReleasePreview) GalleryReleasePreviewDialog { showReleasePreview = false }
 }
 
-internal fun galleryPrimaryActionLabels(): List<String> = listOf("Select", "Open file", "New artwork")
+internal fun galleryPrimaryActionLabels(): List<String> = listOf("TestFlight", "Select", "Open file", "New artwork")
 
 internal fun galleryEmptyStateMessage(): String = "Create a canvas. Everything stays local."
+
+internal data class GalleryReleasePreviewContent(
+    val title: String,
+    val introduction: String,
+    val available: List<String>,
+    val candidates: List<String>,
+    val disclaimer: String,
+)
+
+internal fun galleryReleasePreviewContent(): GalleryReleasePreviewContent = GalleryReleasePreviewContent(
+    title = "TestFlight Preview",
+    introduction = "You are testing NeoCanvas 1.0.0. Your feedback helps decide what receives priority for the full release.",
+    available = listOf(
+        "48 original launch brushes with responsive previews and Brush Studio controls.",
+        "A local Gallery with layers, masks, clipping, selections, transforms, drawing assists and effects.",
+        "Local NeoCanvas documents and professional image, PDF, TIFF and PSD export workflows.",
+        "Private offline creation without an account, advertising or telemetry.",
+    ),
+    candidates = listOf(
+        "More original brush collections, including expanded foliage, texture and natural-media tools.",
+        "Broader shape and grain import, with Photoshop .abr compatibility under evaluation.",
+        "Procreate brush compatibility research; direct .brush and .brushset import remains under investigation.",
+        "Deeper brush dynamics, richer templates and continued Apple Pencil and performance refinement.",
+        "Further Windows, Android and macOS polish alongside the iPad reference experience.",
+    ),
+    disclaimer = "These are roadmap candidates, not a promise of specific features or release dates.",
+)
+
+@Composable
+private fun GalleryReleasePreviewDialog(onDismiss: () -> Unit) {
+    val content = galleryReleasePreviewContent()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = NeoCanvasColors.panel,
+        title = {
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(content.title, color = NeoCanvasColors.paper, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "NeoCanvas ${NeoCanvasReleaseInfo.marketingVersion} · build ${NeoCanvasReleaseInfo.buildNumber}",
+                    color = NeoCanvasColors.accent,
+                    fontSize = 11.sp,
+                )
+            }
+        },
+        text = {
+            Column(
+                Modifier.widthIn(max = 560.dp).heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(content.introduction, color = NeoCanvasColors.muted, fontSize = 13.sp)
+                GalleryReleaseSection("IN THIS TESTFLIGHT", content.available)
+                GalleryReleaseSection("WHAT THE FULL VERSION MAY ADD", content.candidates)
+                Text(
+                    content.disclaimer,
+                    color = NeoCanvasColors.faint,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+        },
+        confirmButton = { Button(onClick = onDismiss) { Text("Got it") } },
+    )
+}
+
+@Composable
+private fun GalleryReleaseSection(title: String, items: List<String>) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(title, color = NeoCanvasColors.accent, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+        items.forEach { item ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+                Text("•", color = NeoCanvasColors.accent, fontSize = 13.sp)
+                Text(item, color = NeoCanvasColors.paper, fontSize = 12.sp, modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
 
 @Composable
 private fun KickstarterGalleryBanner(onOpen: () -> Unit) {
