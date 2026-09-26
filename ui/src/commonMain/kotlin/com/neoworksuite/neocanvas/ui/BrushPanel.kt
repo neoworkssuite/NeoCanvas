@@ -1,6 +1,7 @@
 package com.neoworksuite.neocanvas.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -40,7 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
@@ -52,11 +53,11 @@ import com.neoworksuite.neocanvas.brushes.BrushDynamics
 import com.neoworksuite.neocanvas.brushes.BrushMode
 import com.neoworksuite.neocanvas.brushes.BuiltInBrushes
 import com.neoworksuite.neocanvas.renderer.RasterColor
+import com.neoworksuite.neocanvas.renderer.BrushAssetResolver
 import com.neoworksuite.neocanvas.renderer.RasterPoint
 import com.neoworksuite.neocanvas.renderer.Rasterizer
 import com.neoworksuite.neocanvas.renderer.TileStore
 import kotlin.math.roundToInt
-import kotlin.math.sin
 import kotlinx.coroutines.launch
 
 private enum class BrushPanelPage { Library, Studio }
@@ -83,6 +84,7 @@ fun BrushPanel(state: EditorState, modifier: Modifier = Modifier) {
     }
     state.brushAssetResolver = library.assetResolver
     val pad = remember(library) { BrushTestPadState(assetResolver = library.assetResolver) }
+    val previewCache = remember(library) { BrushPreviewCache() }
     val packManager = remember(library) { BrushPackManager(library) }
     var page by remember { mutableStateOf(BrushPanelPage.Library) }
     var addMenu by remember { mutableStateOf(false) }
@@ -94,6 +96,7 @@ fun BrushPanel(state: EditorState, modifier: Modifier = Modifier) {
             state = state,
             library = library,
             pad = pad,
+            previewCache = previewCache,
             modifier = modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             onBack = { page = BrushPanelPage.Library },
         )
@@ -158,6 +161,7 @@ fun BrushPanel(state: EditorState, modifier: Modifier = Modifier) {
                     BrushList(
                         state = state,
                         library = library,
+                        previewCache = previewCache,
                         modifier = Modifier.weight(1f).fillMaxHeight(),
                         onOpenStudio = { page = BrushPanelPage.Studio },
                     )
@@ -168,6 +172,7 @@ fun BrushPanel(state: EditorState, modifier: Modifier = Modifier) {
                     BrushList(
                         state = state,
                         library = library,
+                        previewCache = previewCache,
                         modifier = Modifier.weight(1f).fillMaxWidth(),
                         onOpenStudio = { page = BrushPanelPage.Studio },
                     )
@@ -235,6 +240,7 @@ private fun CategoryChip(label: String, selected: Boolean, onClick: () -> Unit) 
 private fun BrushList(
     state: EditorState,
     library: BrushLibraryState,
+    previewCache: BrushPreviewCache,
     modifier: Modifier,
     onOpenStudio: () -> Unit,
 ) {
@@ -249,6 +255,8 @@ private fun BrushList(
                 brush = brush,
                 selected = selected,
                 favourite = library.isFavourite(brush.id),
+                previewCache = previewCache,
+                assetResolver = library.assetResolver,
                 onFavourite = { library.toggleFavourite(brush.id) },
                 onClick = {
                     if (selected) {
@@ -268,6 +276,8 @@ private fun BrushPreset(
     brush: BrushDefinition,
     selected: Boolean,
     favourite: Boolean,
+    previewCache: BrushPreviewCache,
+    assetResolver: BrushAssetResolver,
     onFavourite: () -> Unit,
     onClick: () -> Unit,
 ) {
@@ -277,7 +287,7 @@ private fun BrushPreset(
             .clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        StrokePreview(brush, Modifier.width(72.dp).height(29.dp))
+        StrokePreview(brush, previewCache, assetResolver, Modifier.width(92.dp).height(34.dp))
         Column(Modifier.weight(1f).padding(start = 9.dp)) {
             Text(brush.name, color = NeoCanvasColors.paper, fontSize = 12.sp, maxLines = 1)
             Text(
@@ -305,6 +315,7 @@ private fun BrushStudio(
     state: EditorState,
     library: BrushLibraryState,
     pad: BrushTestPadState,
+    previewCache: BrushPreviewCache,
     modifier: Modifier,
     onBack: () -> Unit,
 ) {
@@ -332,6 +343,13 @@ private fun BrushStudio(
                 Text("Clear Pad", color = NeoCanvasColors.muted, fontSize = 10.sp)
             }
         }
+
+        StrokePreview(
+            brush = state.brush,
+            cache = previewCache,
+            assetResolver = library.assetResolver,
+            modifier = Modifier.fillMaxWidth().height(58.dp),
+        )
 
         BrushTestPadCanvas(state, pad, Modifier.fillMaxWidth().height(150.dp))
 
@@ -504,34 +522,19 @@ private fun BrushTestPadCanvas(state: EditorState, pad: BrushTestPadState, modif
 }
 
 @Composable
-private fun StrokePreview(brush: BrushDefinition, modifier: Modifier = Modifier) {
-    Canvas(modifier.clip(RoundedCornerShape(6.dp)).background(NeoCanvasColors.workspace)) {
-        val width = (brush.baseSize * .34f).coerceIn(2f, 13f)
-        val colour = NeoCanvasColors.paper.copy(alpha = (.42f + brush.opacity * .5f).coerceIn(.42f, .92f))
-        val steps = 24
-        var previous = Offset(size.width * .05f, size.height * .58f)
-        repeat(steps) { index ->
-            val t = (index + 1f) / steps
-            val jitter = sin((index + brush.id.length) * 1.9f) * brush.dynamics.jitter * size.height * .16f
-            val next = Offset(
-                size.width * (.05f + .90f * t),
-                size.height * (.58f - sin(t * 3.14159f) * .25f) + jitter,
-            )
-            drawLine(
-                color = colour,
-                start = previous,
-                end = next,
-                strokeWidth = width * (.45f + .55f * sin(t * 3.14159f)),
-                cap = if (brush.tip == com.neoworksuite.neocanvas.brushes.BrushTip.Pixel) StrokeCap.Square else StrokeCap.Round,
-            )
-            if (brush.dynamics.scatter > .2f && index % 4 == 0) {
-                drawCircle(
-                    color = colour.copy(alpha = colour.alpha * .65f),
-                    radius = width * .32f,
-                    center = next + Offset(0f, size.height * .18f),
-                )
-            }
-            previous = next
-        }
+private fun StrokePreview(
+    brush: BrushDefinition,
+    cache: BrushPreviewCache,
+    assetResolver: BrushAssetResolver,
+    modifier: Modifier = Modifier,
+) {
+    val image = remember(brush, cache, assetResolver) {
+        cache.image(brush, assetResolver, 180, 58, RasterColor(238, 241, 245))
     }
+    Image(
+        bitmap = image,
+        contentDescription = "${brush.name} rendered preview",
+        contentScale = ContentScale.Fit,
+        modifier = modifier.clip(RoundedCornerShape(6.dp)).background(NeoCanvasColors.workspace),
+    )
 }
