@@ -84,6 +84,52 @@ class TiledLayerCompositorRenderTest {
     }
 
     @Test
+    fun layer_alpha_is_applied_once() {
+        val target = ImageBitmap(512, 256)
+        val tile = solidTile(Color(0x80804020))
+        CanvasDrawScope().draw(Density(1f), LayoutDirection.Ltr, Canvas(target), Size(512f, 256f)) {
+            drawSeamlessRasterTiles(
+                tiles = listOf(
+                    RasterTileImage(TileKey("paint", 0, 0), tile),
+                    RasterTileImage(TileKey("paint", 1, 0), tile),
+                ),
+                documentWidth = 512,
+                documentHeight = 256,
+                documentScale = 1f,
+                alpha = 0.5f,
+                blendMode = BlendMode.SrcOver,
+            )
+        }
+
+        val pixels = target.toPixelMap()
+        assertEquals(0.25f, pixels[255, 96].alpha, 1f / 255f)
+        assertEquals(0.25f, pixels[256, 96].alpha, 1f / 255f)
+    }
+
+    @Test
+    fun non_normal_blend_mode_is_applied_once() {
+        val target = ImageBitmap(256, 256)
+        Canvas(target).drawRect(0f, 0f, 256f, 256f, Paint().apply { color = Color.Blue })
+        val tile = solidTile(Color.Red)
+        CanvasDrawScope().draw(Density(1f), LayoutDirection.Ltr, Canvas(target), Size(256f, 256f)) {
+            drawSeamlessRasterTiles(
+                tiles = listOf(RasterTileImage(TileKey("paint", 0, 0), tile)),
+                documentWidth = 256,
+                documentHeight = 256,
+                documentScale = 1f,
+                alpha = 1f,
+                blendMode = BlendMode.Multiply,
+            )
+        }
+
+        val pixel = target.toPixelMap()[128, 128]
+        assertEquals(0f, pixel.red, 1f / 255f)
+        assertEquals(0f, pixel.green, 1f / 255f)
+        assertEquals(0f, pixel.blue, 1f / 255f)
+        assertEquals(1f, pixel.alpha, 1f / 255f)
+    }
+
+    @Test
     fun missing_neighbor_remains_transparent() {
         val target = ImageBitmap(512, 256)
         val tile = solidTile(Color.Red)

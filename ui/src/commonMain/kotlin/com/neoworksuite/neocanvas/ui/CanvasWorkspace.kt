@@ -48,7 +48,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -87,8 +86,6 @@ import kotlinx.coroutines.delay
 
 private enum class TransformDrag { None, Move, Scale, Rotate }
 private enum class ObjectDrag { None, Move, Scale, Rotate, LineStart, LineEnd, TextLeft, TextRight, TextTop, TextBottom }
-
-internal fun liveCanvasTileFilterQuality(): FilterQuality = FilterQuality.None
 
 /** Bounded document viewport. Strokes map to document pixels before the shared rasterizer stores them. */
 @Composable
@@ -879,6 +876,7 @@ fun CanvasWorkspace(
                     state,
                     transformPreview ?: movePreview ?: state.effectPreviewPatch ?: strokePreview,
                     tileImages,
+                    scale,
                     textMeasurer,
                     textFontFamilies,
                     editableObjectPreviewLayerId = if (objectGesturePreview != null) state.activeLayerId else null,
@@ -1454,6 +1452,7 @@ private fun DrawScope.drawStoredTiles(
     state: EditorState,
     preview: com.neoworksuite.neocanvas.renderer.RasterPatch?,
     images: TileImageCache,
+    documentScale: Float,
     textMeasurer: androidx.compose.ui.text.TextMeasurer,
     textFontFamilies: Map<String, FontFamily>,
     editableObjectPreviewLayerId: String? = null,
@@ -1476,9 +1475,9 @@ private fun DrawScope.drawStoredTiles(
                 val clippingBase = if (layer.clipping && index > 0) state.document.layers[index - 1] else null
                 val layerPreview = preview?.takeIf { patch -> patch.keys.any { it.layerId == layer.id } }
                 val addresses = payload.tileAddresses + layerPreview?.keys.orEmpty().filter { it.layerId == layer.id }
-                addresses.forEach { address ->
+                val rasterTiles = addresses.mapNotNull { address ->
                     val sourcePixels = (if (layerPreview != null) layerPreview.previewTile(address, state.tileStore)
-                        else state.tileStore.read(address)) ?: return@forEach
+                        else state.tileStore.read(address)) ?: return@mapNotNull null
                     val maskedPixels = applyLayerMaskPreview(sourcePixels, layer, address, state, preview)
                     val pixels = if (layer.clipping) {
                         val mask = clippingBase?.let { base ->
@@ -1487,18 +1486,16 @@ private fun DrawScope.drawStoredTiles(
                         }
                         clipTileAlpha(maskedPixels, mask)
                     } else maskedPixels
-                    val tileImage = images.image(address, pixels)
-                    drawImage(
-                        image = tileImage,
-                        srcOffset = IntOffset.Zero,
-                        srcSize = IntSize(tileImage.width, tileImage.height),
-                        dstOffset = IntOffset(address.x * 256, address.y * 256),
-                        dstSize = IntSize(256, 256),
-                        alpha = effectiveOpacity,
-                        blendMode = blendMode,
-                        filterQuality = liveCanvasTileFilterQuality(),
-                    )
+                    RasterTileImage(address, images.image(address, pixels))
                 }
+                drawSeamlessRasterTiles(
+                    tiles = rasterTiles,
+                    documentWidth = state.document.width,
+                    documentHeight = state.document.height,
+                    documentScale = documentScale,
+                    alpha = effectiveOpacity,
+                    blendMode = blendMode,
+                )
             }
 
             is com.neoworksuite.neocanvas.core.model.LayerPayload.TextObject -> {

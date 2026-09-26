@@ -40,6 +40,9 @@ internal fun seamSafeTileBounds(
     )
 }
 
+internal fun seamlessRasterTileFilterQuality(): androidx.compose.ui.graphics.FilterQuality =
+    androidx.compose.ui.graphics.FilterQuality.None
+
 internal data class RasterTileImage(
     val key: TileKey,
     val image: androidx.compose.ui.graphics.ImageBitmap,
@@ -69,7 +72,7 @@ internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSeamlessRaster
     val tilePaint = androidx.compose.ui.graphics.Paint().apply {
         this.alpha = 1f
         this.blendMode = androidx.compose.ui.graphics.BlendMode.Src
-        this.filterQuality = androidx.compose.ui.graphics.FilterQuality.None
+        this.filterQuality = seamlessRasterTileFilterQuality()
         this.isAntiAlias = false
     }
 

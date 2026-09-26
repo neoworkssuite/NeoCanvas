@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 
 class CanvasTileSamplingTest {
     @Test
-    fun live_canvas_uses_non_interpolating_tile_sampling_to_prevent_faint_seams() {
-        assertEquals(FilterQuality.None, liveCanvasTileFilterQuality())
+    fun seamless_compositor_uses_non_interpolating_tile_sampling() {
+        assertEquals(FilterQuality.None, seamlessRasterTileFilterQuality())
     }
 }
