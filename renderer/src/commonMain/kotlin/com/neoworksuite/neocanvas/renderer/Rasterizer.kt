@@ -1,10 +1,13 @@
 package com.neoworksuite.neocanvas.renderer
 
 import com.neoworksuite.neocanvas.brushes.BrushMode
+import com.neoworksuite.neocanvas.brushes.BrushAssetRef
 import com.neoworksuite.neocanvas.brushes.BrushDefinition
+import com.neoworksuite.neocanvas.brushes.BrushStamp
 import com.neoworksuite.neocanvas.brushes.BrushTip
 import com.neoworksuite.neocanvas.brushes.StampAngleMode
 import kotlin.math.ceil
+import kotlin.math.atan2
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.floor
@@ -15,6 +18,26 @@ import kotlin.math.sqrt
 
 /** Platform-neutral brush input after the UI has mapped it into document pixels. */
 data class RasterPoint(val x: Float, val y: Float, val pressure: Float = 1f)
+
+internal data class RasterStampSample(
+    val point: RasterPoint,
+    val tangentRadians: Float,
+    val progress: Float,
+)
+
+internal fun selectShapeVariant(
+    variants: List<BrushAssetRef>,
+    stampIndex: Int,
+    subStamp: Int,
+): BrushAssetRef? = if (variants.isEmpty()) null else variants[
+    ((stampIndex.toLong() * 31L + subStamp.toLong() * 17L).mod(variants.size.toLong())).toInt()
+]
+
+internal fun plannedSubStampCount(spec: BrushStamp, pressure: Float, stampIndex: Int): Int {
+    val pressureFactor = 1f - spec.pressureStampCount * (1f - pressure.coerceIn(.05f, 1f))
+    val jitter = (rasterNoise01(stampIndex, 0, 211) * 2f - 1f) * spec.stampCountJitter
+    return (spec.stampCount * pressureFactor * (1f + jitter)).toInt().coerceIn(1, 8)
+}
 
 enum class DrawingSymmetry { None, Vertical, Horizontal, Both }
 
@@ -28,7 +51,17 @@ data class RasterColor(val red: Int, val green: Int, val blue: Int) {
  * applied automatically: callers can pair it with one ApplyRasterPatch history command.
  */
 object Rasterizer {
-    private data class SymmetrySample(val point: RasterPoint, val flipX: Boolean, val flipY: Boolean)
+    private data class SymmetrySample(
+        val point: RasterPoint,
+        val tangentRadians: Float,
+        val flipX: Boolean,
+        val flipY: Boolean,
+    )
+
+    private data class ResolvedBrushAssets(
+        val shapes: Map<BrushAssetRef, BrushAsset>,
+        val grain: BrushAsset?,
+    )
 
     fun stroke(
         existing: TileStore,
@@ -50,10 +83,21 @@ object Rasterizer {
         require(opacity in 0f..1f)
         if (points.isEmpty()) return RasterPatch.of(emptyMap())
 
+        val stampSpec = brush?.stamp
+        val shapeRefs = stampSpec?.resolvedShapes.orEmpty()
+        val resolvedShapes = shapeRefs.associateWith { ref ->
+            requireNotNull(assetResolver.resolve(ref)) { "Missing brush shape asset '${ref.id}'." }
+        }
+        val resolvedGrain = stampSpec?.grain?.let { ref ->
+            requireNotNull(assetResolver.resolve(ref)) { "Missing brush grain asset '${ref.id}'." }
+        }
+        val resolvedAssets = ResolvedBrushAssets(resolvedShapes, resolvedGrain)
+
         val working = linkedMapOf<TileKey, ByteArray>()
         fun tile(key: TileKey): ByteArray = working.getOrPut(key) { existing.read(key) ?: ByteArray(TileFormat.BYTES_PER_TILE) }
         val stamps = interpolateStrokeStamps(points, size, brush)
-        stamps.forEachIndexed { stampIndex, point ->
+        stamps.forEachIndexed { stampIndex, sample ->
+            val point = sample.point
             val dynamics = brush?.dynamics
             val scatterRadius = size * (dynamics?.scatter ?: 0f) * .72f
             val jitterRadius = size * (dynamics?.jitter ?: 0f) * .24f
@@ -63,34 +107,56 @@ object Rasterizer {
                 val amount = spread * noise01(stampIndex, point.y.toInt(), 41)
                 point.copy(x = point.x + cos(angle) * amount, y = point.y + sin(angle) * amount)
             } else point
-            val count = brush?.stamp?.let { spec ->
-                val jitter = (noise01(stampIndex, 0, 211) * 2f - 1f) * spec.stampCountJitter
-                (spec.stampCount * (1f + jitter)).toInt().coerceIn(1, 8)
-            } ?: 1
+            val count = stampSpec?.let { plannedSubStampCount(it, point.pressure, stampIndex) } ?: 1
             repeat(count) { subStamp ->
-                val spec = brush?.stamp
-                val across = spec?.scatterAcross ?: 0f
-                val along = spec?.scatterAlong ?: 0f
+                val pressureSpread = 1f + (stampSpec?.pressureScatter ?: 0f) * (1f - point.pressure.coerceIn(.05f, 1f))
+                val across = (stampSpec?.scatterAcross ?: 0f) * pressureSpread
+                val along = (stampSpec?.scatterAlong ?: 0f) * pressureSpread
+                val alongOffset = (noise01(stampIndex, subStamp, 223) * 2f - 1f) * size * along
+                val acrossOffset = (noise01(stampIndex, subStamp, 227) * 2f - 1f) * size * across
+                val tangentCos = cos(sample.tangentRadians)
+                val tangentSin = sin(sample.tangentRadians)
                 val variedPoint = movedPoint.copy(
-                    x = movedPoint.x + (noise01(stampIndex, subStamp, 223) * 2f - 1f) * size * along,
-                    y = movedPoint.y + (noise01(stampIndex, subStamp, 227) * 2f - 1f) * size * across,
+                    x = movedPoint.x + tangentCos * alongOffset - tangentSin * acrossOffset,
+                    y = movedPoint.y + tangentSin * alongOffset + tangentCos * acrossOffset,
                 )
-                val mirrored = linkedSetOf(SymmetrySample(variedPoint, flipX = false, flipY = false))
+                val mirrored = linkedSetOf(
+                    SymmetrySample(variedPoint, sample.tangentRadians, flipX = false, flipY = false),
+                )
                 if (symmetry == DrawingSymmetry.Vertical || symmetry == DrawingSymmetry.Both) {
-                    val point = variedPoint.copy(x = canvasWidth - variedPoint.x)
-                    if (point != variedPoint) mirrored += SymmetrySample(point, flipX = true, flipY = false)
+                    val mirroredPoint = variedPoint.copy(x = canvasWidth - variedPoint.x)
+                    if (mirroredPoint != variedPoint) mirrored += SymmetrySample(
+                        mirroredPoint,
+                        sample.tangentRadians,
+                        flipX = true,
+                        flipY = false,
+                    )
                 }
                 if (symmetry == DrawingSymmetry.Horizontal || symmetry == DrawingSymmetry.Both) {
-                    val point = variedPoint.copy(y = canvasHeight - variedPoint.y)
-                    if (point != variedPoint) mirrored += SymmetrySample(point, flipX = false, flipY = true)
+                    val mirroredPoint = variedPoint.copy(y = canvasHeight - variedPoint.y)
+                    if (mirroredPoint != variedPoint) mirrored += SymmetrySample(
+                        mirroredPoint,
+                        sample.tangentRadians,
+                        flipX = false,
+                        flipY = true,
+                    )
                 }
                 if (symmetry == DrawingSymmetry.Both) {
-                    val point = variedPoint.copy(x = canvasWidth - variedPoint.x, y = canvasHeight - variedPoint.y)
-                    if (point != variedPoint) mirrored += SymmetrySample(point, flipX = true, flipY = true)
+                    val mirroredPoint = variedPoint.copy(x = canvasWidth - variedPoint.x, y = canvasHeight - variedPoint.y)
+                    if (mirroredPoint != variedPoint) mirrored += SymmetrySample(
+                        mirroredPoint,
+                        sample.tangentRadians,
+                        flipX = true,
+                        flipY = true,
+                    )
                 }
-                mirrored.forEach { sample ->
-                    stamp(::tile, layerId, sample.point, color, size, opacity, mode, canvasWidth, canvasHeight,
-                        acceptsPixel, brush, alphaLocked, assetResolver, stampIndex, subStamp, sample.flipX, sample.flipY)
+                mirrored.forEach { mirroredSample ->
+                    stamp(
+                        ::tile, layerId, mirroredSample.point, color, size, opacity, mode,
+                        canvasWidth, canvasHeight, acceptsPixel, brush, alphaLocked, resolvedAssets,
+                        stampIndex, subStamp, mirroredSample.tangentRadians, sample.progress,
+                        mirroredSample.flipX, mirroredSample.flipY,
+                    )
                 }
             }
         }
@@ -108,7 +174,7 @@ object Rasterizer {
         points: List<RasterPoint>,
         size: Float,
         brush: BrushDefinition?,
-    ): List<RasterPoint> {
+    ): List<RasterStampSample> {
         val configured = size * (brush?.let { it.spacing / it.baseSize } ?: .20f)
         val textured = brush?.let {
             it.categoryId !in setOf("pencils", "pens") && (
@@ -117,27 +183,53 @@ object Rasterizer {
                     it.dynamics.scatter > .2f || it.dynamics.grain > .4f || it.dynamics.wetMix > .5f
                 )
         } == true
-        // Large textured tips cover a broad area. A proportional floor avoids restamping almost
-        // identical areas while preserving the dense sampling used by precision pens and pencils.
         val spacing = max(.5f, max(configured, if (textured && size >= 24f) size * .22f else 0f))
-        val stamps = ArrayList<RasterPoint>()
-        stamps += points.first()
-        var distanceUntilStamp = spacing.toDouble()
-        points.zipWithNext().forEach { (from, to) ->
+        val segmentLengths = points.zipWithNext().map { (from, to) ->
             val dx = to.x - from.x
             val dy = to.y - from.y
-            val distance = sqrt(dx.toDouble() * dx + dy.toDouble() * dy)
-            if (distance == 0.0) return@forEach
+            sqrt(dx.toDouble() * dx + dy.toDouble() * dy)
+        }
+        val totalDistance = segmentLengths.sum()
+        fun segmentTangent(index: Int): Float {
+            val from = points[index]
+            val to = points[index + 1]
+            return atan2(to.y - from.y, to.x - from.x)
+        }
+        val firstTangent = segmentLengths.indexOfFirst { it > 0.0 }
+            .takeIf { it >= 0 }?.let(::segmentTangent) ?: 0f
+        val stamps = ArrayList<RasterStampSample>()
+        stamps += RasterStampSample(points.first(), firstTangent, 0f)
+        var distanceUntilStamp = spacing.toDouble()
+        var traversed = 0.0
+        points.zipWithNext().forEachIndexed { index, (from, to) ->
+            val distance = segmentLengths[index]
+            if (distance == 0.0) return@forEachIndexed
+            val dx = to.x - from.x
+            val dy = to.y - from.y
+            val tangent = segmentTangent(index)
             while (distanceUntilStamp <= distance && stamps.size < 100_000) {
                 val fraction = distanceUntilStamp / distance
-                stamps += RasterPoint((from.x.toDouble() + dx * fraction).toFloat(),
+                val point = RasterPoint(
+                    (from.x.toDouble() + dx * fraction).toFloat(),
                     (from.y.toDouble() + dy * fraction).toFloat(),
-                    (from.pressure.toDouble() + (to.pressure - from.pressure) * fraction).toFloat())
+                    (from.pressure.toDouble() + (to.pressure - from.pressure) * fraction).toFloat(),
+                )
+                val progress = if (totalDistance == 0.0) 1f
+                else ((traversed + distanceUntilStamp) / totalDistance).toFloat().coerceIn(0f, 1f)
+                stamps += RasterStampSample(point, tangent, progress)
                 distanceUntilStamp += spacing
             }
             distanceUntilStamp -= distance
+            traversed += distance
         }
-        if (stamps.last() != points.last()) stamps += points.last()
+        if (stamps.last().point != points.last()) {
+            val lastTangent = segmentLengths.indexOfLast { it > 0.0 }
+                .takeIf { it >= 0 }?.let(::segmentTangent) ?: firstTangent
+            stamps += RasterStampSample(points.last(), lastTangent, 1f)
+        } else if (stamps.isNotEmpty()) {
+            val last = stamps.last()
+            stamps[stamps.lastIndex] = last.copy(progress = 1f)
+        }
         return stamps
     }
 
@@ -154,25 +246,39 @@ object Rasterizer {
         acceptsPixel: (Int, Int) -> Boolean,
         brush: BrushDefinition?,
         alphaLocked: Boolean,
-        assetResolver: BrushAssetResolver,
+        resolvedAssets: ResolvedBrushAssets,
         stampIndex: Int,
         subStamp: Int,
+        tangentRadians: Float,
+        progress: Float,
         flipX: Boolean,
         flipY: Boolean,
     ) {
         val pressure = point.pressure.coerceIn(.05f, 1f)
+        val stampSpec = brush?.stamp
+        val startFactor = stampSpec?.startTaper?.takeIf { it > 0f }
+            ?.let { (progress / it).coerceIn(0f, 1f) } ?: 1f
+        val endFactor = stampSpec?.endTaper?.takeIf { it > 0f }
+            ?.let { ((1f - progress) / it).coerceIn(0f, 1f) } ?: 1f
+        val taper = min(startFactor, endFactor)
+        if (taper <= 0f) return
         val sizePressure = 1f - (1f - pressure) * (brush?.pressureSize ?: 1f)
         val opacityPressure = 1f - (1f - pressure) * (brush?.pressureOpacity ?: 1f)
-        val radius = max(.5f, size * sizePressure / 2f)
-        val stampSpec = brush?.stamp
-        val shapeAsset = stampSpec?.shape?.let(assetResolver::resolve)
+        val radius = max(.5f, size * sizePressure * taper / 2f)
+        val shapeRef = selectShapeVariant(stampSpec?.resolvedShapes.orEmpty(), stampIndex, subStamp)
+        val shapeAsset = shapeRef?.let(resolvedAssets.shapes::get)
+        val baseAngle = (stampSpec?.angleDegrees ?: 0f) / 180f * 3.1415927f
+        val angleNoise = (noise01(stampIndex, subStamp, 239) * 2f - 1f)
         val stampAngle = when (stampSpec?.angleMode) {
-            StampAngleMode.Randomized, StampAngleMode.DirectionJitter ->
-                (stampSpec.angleDegrees / 180f * 3.1415927f) +
-                    (noise01(stampIndex, subStamp, 239) * 2f - 1f) * stampSpec.angleJitter * 3.1415927f
-            else -> (stampSpec?.angleDegrees ?: 0f) / 180f * 3.1415927f
+            StampAngleMode.Direction -> baseAngle + tangentRadians
+            StampAngleMode.Randomized -> baseAngle + angleNoise * 3.1415927f
+            StampAngleMode.DirectionJitter -> baseAngle + tangentRadians + angleNoise * stampSpec.angleJitter * 3.1415927f
+            else -> baseAngle
         }
-        val maskSampler = shapeAsset?.let { StampMaskSampler(it, stampSpec.scaleX, stampSpec.scaleY, stampAngle) }
+        val maskSampler = shapeAsset?.let { StampMaskSampler(it, stampSpec!!.scaleX, stampSpec.scaleY, stampAngle) }
+        val grainSampler = resolvedAssets.grain?.let {
+            BrushGrainSampler(it, stampSpec!!.grainScale, stampSpec.grainMovement)
+        }
         val stampBoundScale = stampSpec?.let { max(it.scaleX, it.scaleY) } ?: 1f
         val boundRadius = if (maskSampler != null) radius * stampBoundScale * 1.414214f
         else if (brush?.tip == BrushTip.Bark && brush.dynamics.rotation > 0f) {
@@ -202,6 +308,7 @@ object Rasterizer {
         val chalkThreshold = .16f + grain * .28f
         val wetRetain = 1f - wetMix * .28f
         val wetBlend = wetMix * .28f
+        val stampColor = jitteredColor(color, stampSpec, stampIndex, subStamp)
 
         for (y in top..bottom) for (x in left..right) {
             if (!acceptsPixel(x, y)) continue
@@ -264,12 +371,18 @@ object Rasterizer {
                     } else 0f
                 }
             }
-            coverage *= 1f - grain * (1f - pixelNoise) * .78f
+            coverage *= if (grainSampler != null) {
+                val localX = maskX / radius
+                val localY = maskY / radius
+                .18f + .82f * grainSampler.coverage(x + .5f, y + .5f, localX, localY)
+            } else {
+                1f - grain * (1f - pixelNoise) * .78f
+            }
             if (wetMix > 0f && distance <= 1f) {
                 val bloom = (1f - distance * distance).coerceIn(0f, 1f) * (.32f + .68f * pixelNoise)
                 coverage = coverage * wetRetain + bloom * wetBlend
             }
-            val strength = opacity * opacityPressure * coverage
+            val strength = opacity * opacityPressure * taper * coverage
             if (strength <= 0f) continue
             val key = TileKey(layerId, tileCoordinate(x), tileCoordinate(y))
             val pixels = tile(key)
@@ -286,7 +399,7 @@ object Rasterizer {
                     pixels[offset] = 0; pixels[offset + 1] = 0; pixels[offset + 2] = 0
                 }
             } else {
-                blend(pixels, offset, color, strength)
+                blend(pixels, offset, stampColor, strength)
                 if (alphaLocked) pixels[offset + 3] = originalAlpha
             }
         }
@@ -307,11 +420,42 @@ object Rasterizer {
         pixels[offset + 3] = (outAlpha * 255f).toInt().coerceIn(0, 255).toByte()
     }
 
-    private fun noise01(x: Int, y: Int, salt: Int): Float {
-        var value = x * 374761393 + y * 668265263 + salt * 1442695041
-        value = (value xor (value ushr 13)) * 1274126177
-        return ((value xor (value ushr 16)).ushr(8) and 0x00ffffff) / 16777215f
+    private fun noise01(x: Int, y: Int, salt: Int): Float = rasterNoise01(x, y, salt)
+
+    private fun jitteredColor(
+        color: RasterColor,
+        spec: BrushStamp?,
+        stampIndex: Int,
+        subStamp: Int,
+    ): RasterColor {
+        if (spec == null || (spec.hueJitter == 0f && spec.saturationJitter == 0f && spec.brightnessJitter == 0f)) {
+            return color
+        }
+        var red = color.red / 255f
+        var green = color.green / 255f
+        var blue = color.blue / 255f
+        val luminance = red * .2126f + green * .7152f + blue * .0722f
+        val saturationFactor = 1f + (noise01(stampIndex, subStamp, 263) * 2f - 1f) * spec.saturationJitter
+        red = luminance + (red - luminance) * saturationFactor
+        green = luminance + (green - luminance) * saturationFactor
+        blue = luminance + (blue - luminance) * saturationFactor
+        val hueShift = (noise01(stampIndex, subStamp, 269) * 2f - 1f) * spec.hueJitter
+        val hueRed = red + hueShift * (green - blue)
+        val hueGreen = green + hueShift * (blue - red)
+        val hueBlue = blue + hueShift * (red - green)
+        val brightness = 1f + (noise01(stampIndex, subStamp, 271) * 2f - 1f) * spec.brightnessJitter
+        return RasterColor(
+            (hueRed * brightness * 255f).toInt().coerceIn(0, 255),
+            (hueGreen * brightness * 255f).toInt().coerceIn(0, 255),
+            (hueBlue * brightness * 255f).toInt().coerceIn(0, 255),
+        )
     }
+
+    internal fun plannedRasterStampSamples(
+        points: List<RasterPoint>,
+        size: Float,
+        brush: BrushDefinition?,
+    ): List<RasterStampSample> = if (points.isEmpty()) emptyList() else interpolateStrokeStamps(points, size, brush)
 
     internal fun plannedStrokeStampCount(points: List<RasterPoint>, size: Float, brush: BrushDefinition?): Int =
         if (points.isEmpty()) 0 else interpolateStrokeStamps(points, size, brush).size
@@ -321,12 +465,25 @@ object Rasterizer {
         val count = brush?.stamp?.stampCount?.coerceIn(1, 8) ?: 1
         val radius = size * (brush?.stamp?.let { max(it.scaleX, it.scaleY) } ?: 1f) / 2f
         val visited = samples.size.toLong() * count * (radius * 2f).toLong() * (radius * 2f).toLong()
-        return StampWorkMetrics(samples.size, samples.size * count, visited, samples.lastOrNull())
+        return StampWorkMetrics(samples.size, samples.size * count, visited, samples.lastOrNull()?.point)
     }
 }
+
+internal fun plannedRasterStampSamples(
+    points: List<RasterPoint>,
+    size: Float,
+    brush: BrushDefinition?,
+): List<RasterStampSample> = Rasterizer.plannedRasterStampSamples(points, size, brush)
 
 internal fun plannedStrokeStampCount(points: List<RasterPoint>, size: Float, brush: BrushDefinition?): Int =
     Rasterizer.plannedStrokeStampCount(points, size, brush)
 
 internal fun planStampWork(points: List<RasterPoint>, size: Float, brush: BrushDefinition?): StampWorkMetrics =
     Rasterizer.planStampWork(points, size, brush)
+
+
+private fun rasterNoise01(x: Int, y: Int, salt: Int): Float {
+    var value = x * 374761393 + y * 668265263 + salt * 1442695041
+    value = (value xor (value ushr 13)) * 1274126177
+    return ((value xor (value ushr 16)).ushr(8) and 0x00ffffff) / 16777215f
+}
