@@ -1671,6 +1671,24 @@ class EditorStateTest {
     }
 
     @Test
+    fun adding_a_raster_layer_returns_the_editor_to_painting() {
+        val state = EditorState(DocumentHistory(CanvasDocument.blank(100, 100)))
+        state.objectArrangePicking = true
+        state.activateTool(Tool.Select)
+
+        state.addLayer()
+
+        assertEquals(Tool.Brush, state.tool)
+        assertFalse(state.objectArrangePicking)
+        assertEquals(state.document.layers.single().id, state.activeLayerId)
+        assertTrue(state.document.layers.single().payload is LayerPayload.Raster)
+
+        state.recordStroke(listOf(DrawPoint(10f, 10f), DrawPoint(20f, 20f)))
+
+        assertTrue(state.tileStore.keys.isNotEmpty())
+    }
+
+    @Test
     fun stroke_updates_tile_store_document_patch_and_visual_undo_history() {
         val state = EditorState(
             DocumentHistory(

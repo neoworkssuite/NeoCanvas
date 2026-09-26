@@ -3344,7 +3344,13 @@ class EditorState(
         val id = nextLayerId()
         execute(AddRasterLayer(id, "Layer ${document.layers.size + 1}"))
         activeLayerId = id
-        statusMessage = "Added a new local layer"
+        maskEditingLayerId = null
+        selectedObjectLayerIds = emptySet()
+        objectArrangePicking = false
+        objectEditorVisible = false
+        recentStrokesVisible = false
+        activateTool(if (brush == BuiltInBrushes.eraser) Tool.Eraser else Tool.Brush)
+        statusMessage = "Paint layer added — draw with Apple Pencil or touch"
     }
     fun deleteActiveLayer() {
         val id = activeLayerId ?: return

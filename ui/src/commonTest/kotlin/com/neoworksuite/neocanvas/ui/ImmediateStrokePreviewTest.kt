@@ -1,0 +1,22 @@
+package com.neoworksuite.neocanvas.ui
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class ImmediateStrokePreviewTest {
+    @Test
+    fun live_width_matches_full_pressure_brush_dynamics() {
+        assertEquals(100f, immediateStrokeWidth(100f, 1f, 1f), .001f)
+        assertEquals(50f, immediateStrokeWidth(100f, .5f, 1f), .001f)
+    }
+
+    @Test
+    fun disabled_pressure_response_keeps_configured_size() {
+        assertEquals(100f, immediateStrokeWidth(100f, .2f, 0f), .001f)
+    }
+
+    @Test
+    fun live_width_never_disappears() {
+        assertEquals(1f, immediateStrokeWidth(.1f, .05f, 1f), .001f)
+    }
+}

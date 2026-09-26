@@ -52,6 +52,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.Path
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -189,6 +190,9 @@ fun CanvasWorkspace(
             when (state.tool) {
                 Tool.Smudge -> state.previewSmudge(previewPoints, stabilize = true)
                 Tool.Liquify -> state.previewLiquify(previewPoints, stabilize = true)
+                Tool.Brush -> if (quickShapeSnapped) {
+                    state.previewStroke(previewPoints, stabilize = false)
+                } else null
                 else -> state.previewStroke(previewPoints, stabilize = !quickShapeSnapped)
             }
         }
@@ -883,6 +887,22 @@ fun CanvasWorkspace(
                     editableObjectPreview = objectGesturePreview,
                     editableObjectPreviews = objectGroupGesturePreview,
                 )
+
+                if (state.tool == Tool.Brush && !quickShapeSnapped && previewPoints.isNotEmpty()) {
+                    clipRect(0f, 0f, document.width.toFloat(), document.height.toFloat()) {
+                        drawImmediateStrokePreview(
+                            points = previewPoints,
+                            color = state.color,
+                            size = state.brushSize,
+                            opacity = state.brushOpacity,
+                            pressureSize = state.brush.pressureSize,
+                            pressureOpacity = state.brush.pressureOpacity,
+                            symmetry = state.symmetry,
+                            canvasWidth = document.width.toFloat(),
+                            canvasHeight = document.height.toFloat(),
+                        )
+                    }
+                }
 
                 if (state.tool == Tool.Liquify) {
                     previewPoints.lastOrNull()?.let { point ->
@@ -2041,6 +2061,71 @@ private fun snapEditableObjectGroupRotation(rotationDelta: Float): Float {
 
 internal fun liquifyFootprintRadius(size: Float, pressure: Float): Float =
     maxOf(.75f, size.coerceAtLeast(.01f) * normalizedPressure(pressure) * .5f)
+
+internal fun immediateStrokeWidth(size: Float, pressure: Float, pressureSize: Float): Float {
+    val normalized = normalizedPressure(pressure)
+    val response = pressureSize.coerceIn(0f, 1f)
+    return maxOf(1f, size.coerceAtLeast(.01f) * (1f - (1f - normalized) * response))
+}
+
+private fun DrawScope.drawImmediateStrokePreview(
+    points: List<DrawPoint>,
+    color: Color,
+    size: Float,
+    opacity: Float,
+    pressureSize: Float,
+    pressureOpacity: Float,
+    symmetry: com.neoworksuite.neocanvas.renderer.DrawingSymmetry,
+    canvasWidth: Float,
+    canvasHeight: Float,
+) {
+    fun mirrored(point: DrawPoint): List<DrawPoint> = buildList {
+        add(point)
+        if (symmetry == com.neoworksuite.neocanvas.renderer.DrawingSymmetry.Vertical ||
+            symmetry == com.neoworksuite.neocanvas.renderer.DrawingSymmetry.Both
+        ) add(point.copy(x = canvasWidth - point.x))
+        if (symmetry == com.neoworksuite.neocanvas.renderer.DrawingSymmetry.Horizontal ||
+            symmetry == com.neoworksuite.neocanvas.renderer.DrawingSymmetry.Both
+        ) add(point.copy(y = canvasHeight - point.y))
+        if (symmetry == com.neoworksuite.neocanvas.renderer.DrawingSymmetry.Both) {
+            add(point.copy(x = canvasWidth - point.x, y = canvasHeight - point.y))
+        }
+    }
+
+    fun previewColor(pressure: Float): Color {
+        val normalized = normalizedPressure(pressure)
+        val response = pressureOpacity.coerceIn(0f, 1f)
+        val pressureAlpha = 1f - (1f - normalized) * response
+        return color.copy(alpha = opacity.coerceIn(0f, 1f) * pressureAlpha)
+    }
+
+    if (points.size == 1) {
+        val point = points.single()
+        mirrored(point).forEach { sample ->
+            drawCircle(
+                color = previewColor(sample.pressure),
+                radius = immediateStrokeWidth(size, sample.pressure, pressureSize) / 2f,
+                center = Offset(sample.x, sample.y),
+            )
+        }
+        return
+    }
+
+    points.zipWithNext().forEach { (from, to) ->
+        val fromSamples = mirrored(from)
+        val toSamples = mirrored(to)
+        fromSamples.zip(toSamples).forEach { (mirroredFrom, mirroredTo) ->
+            val pressure = (mirroredFrom.pressure + mirroredTo.pressure) / 2f
+            drawLine(
+                color = previewColor(pressure),
+                start = Offset(mirroredFrom.x, mirroredFrom.y),
+                end = Offset(mirroredTo.x, mirroredTo.y),
+                strokeWidth = immediateStrokeWidth(size, pressure, pressureSize),
+                cap = StrokeCap.Round,
+            )
+        }
+    }
+}
 
 private fun signedObjectScale(value: Float, factor: Float, minMagnitude: Float, maxMagnitude: Float): Float {
     if (value == 0f && minMagnitude == 0f) return 0f
