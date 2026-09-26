@@ -583,6 +583,25 @@ class EditorStateTest {
         assertTrue(expected.contentEquals(state.tileStore.read(key)!!))
     }
 
+    @Test fun incremental_live_brush_patch_is_committed_once_and_remains_undoable() {
+        val state = EditorState(DocumentHistory(CanvasDocument.blank(64, 64)))
+        state.addLayer()
+        state.selectBrush(com.neoworksuite.neocanvas.brushes.BuiltInBrushes.pencil)
+        val points = listOf(DrawPoint(8f, 12f), DrawPoint(28f, 20f), DrawPoint(48f, 42f))
+        val session = assertNotNull(state.beginIncrementalBrushStroke())
+        val prepared = session.finish(state.rasterPointsForStroke(points, stabilize = false)).patch
+        val expected = prepared.keys.associateWith { key ->
+            assertNotNull(prepared.previewTile(key, state.tileStore))
+        }
+
+        state.recordStroke(points, stabilize = false, preparedPatch = prepared)
+
+        assertEquals(expected.keys, state.tileStore.keys)
+        expected.forEach { (key, pixels) -> assertContentEquals(pixels, state.tileStore.read(key)) }
+        assertTrue(state.undo())
+        assertTrue(state.tileStore.keys.isEmpty())
+    }
+
     @Test fun eraser_preview_removes_tile_without_changing_stored_artwork() {
         val state = EditorState(DocumentHistory(CanvasDocument.blank(64, 64)))
         state.addLayer()

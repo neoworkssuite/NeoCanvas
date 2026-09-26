@@ -81,6 +81,8 @@ import com.neoworksuite.neocanvas.core.model.LineStyle
 import com.neoworksuite.neocanvas.core.model.ShapeKind
 import com.neoworksuite.neocanvas.brushes.BrushDefinition
 import com.neoworksuite.neocanvas.brushes.BrushTip
+import com.neoworksuite.neocanvas.renderer.IncrementalRasterStroke
+import com.neoworksuite.neocanvas.renderer.RasterPatch
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -120,6 +122,8 @@ fun CanvasWorkspace(
     var rapidHistoryFingerCount by remember { mutableIntStateOf(0) }
     var rapidHistoryRevision by remember { mutableIntStateOf(0) }
     var rapidHistoryTriggered by remember { mutableStateOf(false) }
+    var liveStrokeSession by remember { mutableStateOf<IncrementalRasterStroke?>(null) }
+    var liveStrokePreview by remember { mutableStateOf<RasterPatch?>(null) }
     val density = LocalDensity.current
     val textMeasurer = rememberTextMeasurer()
     val textFontFamilies = rememberNeoCanvasFontFamilies()
@@ -132,9 +136,13 @@ fun CanvasWorkspace(
         val shape = detectQuickShape(quickShapeRawPoints) ?: return@LaunchedEffect
         quickShapeSnapped = true
         quickShapeResult = shape
+        liveStrokeSession = null
+        liveStrokePreview = null
         inProgress.clear()
         inProgress.addAll(shape.points)
-        state.statusMessage = "QuickShape: ${shape.type.label} — lift to place"
+        state.statusMessage = if (shape.type == QuickShapeType.Line)
+            "Smart Line — move Pencil to set the angle, then lift"
+        else "QuickShape: ${shape.type.label} — lift to place"
     }
 
     LaunchedEffect(quickMenuPointerDown, quickMenuRevision) {
@@ -264,6 +272,8 @@ fun CanvasWorkspace(
                             if (touches.size >= 2) {
                                 // Multi-touch always belongs to canvas navigation/shortcuts, never to a brush stroke.
                                 inProgress.clear()
+                                liveStrokeSession = null
+                                liveStrokePreview = null
                                 touches.forEach { it.consume() }
 
                                 if (touches.size >= 3) {
@@ -652,6 +662,10 @@ fun CanvasWorkspace(
                                 startingObjectPayload == null && groupDrag == ObjectDrag.None
                         quickShapeRawPoints = if (quickShapePointerDown) listOf(initial) else emptyList()
                         quickShapeRevision++
+                        liveStrokeSession = state.beginIncrementalBrushStroke()
+                        liveStrokePreview = liveStrokeSession?.update(
+                            state.rasterPointsForStroke(inProgress.toList(), stabilize = true),
+                        )?.patch
                         var previous = down.position
                         var cancelled = false
                         while (true) {
@@ -789,18 +803,33 @@ fun CanvasWorkspace(
                                 val drawnPoint = point(change.position, pressure)
                                 if (quickShapePointerDown && state.tool == Tool.Brush) {
                                     val movement = (change.position - previous).getDistance()
-                                    if (quickShapeSnapped && movement > viewConfiguration.touchSlop * .25f) {
-                                        quickShapeSnapped = false
-                                        inProgress.clear()
-                                        inProgress.addAll(quickShapeRawPoints)
-                                    }
                                     quickShapeRawPoints = quickShapeRawPoints + drawnPoint
-                                    if (!quickShapeSnapped) inProgress += drawnPoint
+                                    val snappedLine = quickShapeResult?.takeIf {
+                                        quickShapeSnapped && it.type == QuickShapeType.Line
+                                    }
+                                    if (snappedLine != null) {
+                                        val adjusted = adjustHeldSmartLine(snappedLine, drawnPoint)
+                                        quickShapeResult = adjusted
+                                        inProgress.clear()
+                                        inProgress.addAll(adjusted.points)
+                                    } else {
+                                        if (quickShapeSnapped && movement > viewConfiguration.touchSlop * .25f) {
+                                            quickShapeSnapped = false
+                                            inProgress.clear()
+                                            inProgress.addAll(quickShapeRawPoints)
+                                        }
+                                        if (!quickShapeSnapped) inProgress += drawnPoint
+                                    }
                                     if (movement > maxOf(1.5f, viewConfiguration.touchSlop * .10f)) {
                                         quickShapeRevision++
                                     }
                                 } else {
                                     inProgress += drawnPoint
+                                }
+                                if (state.tool == Tool.Brush && !quickShapeSnapped) {
+                                    liveStrokePreview = liveStrokeSession?.update(
+                                        state.rasterPointsForStroke(inProgress.toList(), stabilize = true),
+                                    )?.patch
                                 }
                             }
                             previous = change.position
@@ -830,7 +859,13 @@ fun CanvasWorkspace(
                             val promoted = quickShapeSnapped && quickShapeResult?.let { result ->
                                 state.commitQuickShape(result, state.color, state.brushSize, state.brushOpacity)
                             } == true
-                            if (!promoted) state.recordStroke(inProgress.toList(), stabilize = !quickShapeSnapped)
+                            if (!promoted) {
+                                val stabilize = !quickShapeSnapped
+                                val prepared = liveStrokeSession?.finish(
+                                    state.rasterPointsForStroke(inProgress.toList(), stabilize),
+                                )?.patch
+                                state.recordStroke(inProgress.toList(), stabilize = stabilize, preparedPatch = prepared)
+                            }
                         }
                     } finally {
                         quickShapePointerDown = false
@@ -838,6 +873,8 @@ fun CanvasWorkspace(
                         quickShapeSnapped = false
                         quickShapeResult = null
                         quickShapeRevision++
+                        liveStrokeSession = null
+                        liveStrokePreview = null
                         inProgress.clear()
                         moveDelta = Offset.Zero
                         movingSelection = false
@@ -881,7 +918,7 @@ fun CanvasWorkspace(
                 drawRect(NeoCanvasColors.paper, size = Size(document.width.toFloat(), document.height.toFloat()))
                 drawStoredTiles(
                     state,
-                    transformPreview ?: movePreview ?: state.effectPreviewPatch ?: strokePreview,
+                    transformPreview ?: movePreview ?: state.effectPreviewPatch ?: liveStrokePreview ?: strokePreview,
                     tileImages,
                     scale,
                     textMeasurer,
@@ -891,7 +928,7 @@ fun CanvasWorkspace(
                     editableObjectPreviews = objectGroupGesturePreview,
                 )
 
-                if (state.tool == Tool.Brush && !quickShapeSnapped && previewPoints.isNotEmpty()) {
+                if (state.tool == Tool.Brush && !quickShapeSnapped && previewPoints.isNotEmpty() && liveStrokePreview == null) {
                     clipRect(0f, 0f, document.width.toFloat(), document.height.toFloat()) {
                         drawImmediateStrokePreview(
                             points = previewPoints,

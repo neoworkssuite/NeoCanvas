@@ -69,6 +69,8 @@ import com.neoworksuite.neocanvas.renderer.Rasterizer
 import com.neoworksuite.neocanvas.renderer.RasterSelection
 import com.neoworksuite.neocanvas.renderer.RasterLiquify
 import com.neoworksuite.neocanvas.renderer.LiquifyMode
+import com.neoworksuite.neocanvas.renderer.IncrementalRasterStroke
+import com.neoworksuite.neocanvas.renderer.RasterPatch
 import com.neoworksuite.neocanvas.renderer.TileKey
 import com.neoworksuite.neocanvas.renderer.TileStore
 
@@ -965,8 +967,7 @@ class EditorState(
         recordUsedColour(colour)
         activeLayerId = id
         clearSelection()
-        openObjectEditor(id)
-        statusMessage = "QuickShape line is editable"
+        statusMessage = "Smart Line added"
         return true
     }
 
@@ -3481,7 +3482,11 @@ class EditorState(
         layer.groupId?.let { id -> document.groups.firstOrNull { it.id == id }?.locked } == true
 
     /** Rasterizes one completed gesture into sparse tiles and commits its address patch to history. */
-    fun recordStroke(points: List<DrawPoint>, stabilize: Boolean = true) {
+    fun recordStroke(
+        points: List<DrawPoint>,
+        stabilize: Boolean = true,
+        preparedPatch: RasterPatch? = null,
+    ) {
         val layerId = activeLayerId ?: return
         if (points.isEmpty() || tool !in listOf(Tool.Brush, Tool.Eraser, Tool.Smudge, Tool.Liquify)) return
         if (!wakeLayer(layerId)) return
@@ -3528,7 +3533,8 @@ class EditorState(
         val patch = when (tool) {
             Tool.Smudge -> previewSmudge(points, stabilize)
             Tool.Liquify -> previewLiquify(points, stabilize)
-            else -> previewStroke(points, stabilize)
+            else -> preparedPatch?.takeIf { candidate -> candidate.keys.all { it.layerId == layerId } }
+                ?: previewStroke(points, stabilize)
         }
         if (patch == null) return
         val before = tileStore.snapshot()
@@ -3555,6 +3561,39 @@ class EditorState(
             statusMessage = "Liquify " + liquifyMode.displayName.lowercase() + " applied"
         }
     }
+
+    internal fun beginIncrementalBrushStroke(): IncrementalRasterStroke? {
+        if (tool != Tool.Brush || maskEditingLayerId != null) return null
+        val layerId = activeLayerId ?: return null
+        val activeLayer = document.layers.firstOrNull { it.id == layerId && it.visible && !it.locked } ?: return null
+        if (activeLayer.payload !is LayerPayload.Raster || isGroupLocked(activeLayer)) return null
+        val selected = selection
+        return IncrementalRasterStroke(
+            existing = TileStore(tileStore.snapshotLayer(layerId)),
+            layerId = layerId,
+            color = RasterColor(
+                (color.red * 255).toInt(),
+                (color.green * 255).toInt(),
+                (color.blue * 255).toInt(),
+            ),
+            size = brushSize,
+            opacity = brushOpacity,
+            mode = com.neoworksuite.neocanvas.brushes.BrushMode.PAINT,
+            canvasWidth = document.width,
+            canvasHeight = document.height,
+            acceptsPixel = { x, y -> selected?.contains(x, y) ?: true },
+            brush = brush,
+            symmetry = symmetry,
+            alphaLocked = activeLayer.alphaLocked,
+            assetResolver = brushAssetResolver,
+        )
+    }
+
+    internal fun rasterPointsForStroke(points: List<DrawPoint>, stabilize: Boolean): List<RasterPoint> =
+        points.map { RasterPoint(it.x, it.y, normalizedPressure(it.pressure)) }.let { rasterPoints ->
+            if (stabilize) com.neoworksuite.neocanvas.renderer.smoothStroke(rasterPoints, stabilization)
+            else rasterPoints
+        }
 
     fun previewStroke(
         points: List<DrawPoint>,
@@ -3587,10 +3626,7 @@ class EditorState(
         return Rasterizer.stroke(
             existing = targetStore,
             layerId = targetLayerId,
-            points = points.map { RasterPoint(it.x, it.y, normalizedPressure(it.pressure)) }.let { rasterPoints ->
-                if (stabilize) com.neoworksuite.neocanvas.renderer.smoothStroke(rasterPoints, stabilization)
-                else rasterPoints
-            },
+            points = rasterPointsForStroke(points, stabilize),
             color = targetColor,
             size = brushSize,
             opacity = brushOpacity,

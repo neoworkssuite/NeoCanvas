@@ -17,6 +17,18 @@ import kotlin.test.assertIs
 
 class QuickShapeTest {
     @Test
+    fun held_smart_line_tracks_the_pencil_endpoint_until_lift() {
+        val original = QuickShapeResult(
+            QuickShapeType.Line,
+            listOf(DrawPoint(12f, 18f, .4f), DrawPoint(80f, 40f, .7f)),
+        )
+
+        val adjusted = adjustHeldSmartLine(original, DrawPoint(120f, 96f, .9f))
+
+        assertEquals(listOf(DrawPoint(12f, 18f, .4f), DrawPoint(120f, 96f, .9f)), adjusted.points)
+    }
+
+    @Test
     fun held_line_commits_one_editable_object_and_no_raster_stroke() {
         val state = EditorState(DocumentHistory(CanvasDocument.blank(200, 200)))
         val result = QuickShapeResult(
@@ -34,7 +46,7 @@ class QuickShapeTest {
         assertEquals(6f, line.strokeWidth)
         assertEquals(.4f, layer.opacity)
         assertTrue(state.tileStore.keys.isEmpty())
-        assertTrue(state.objectEditorVisible)
+        assertFalse(state.objectEditorVisible)
         assertTrue(state.undo())
         assertTrue(state.document.layers.isEmpty())
     }

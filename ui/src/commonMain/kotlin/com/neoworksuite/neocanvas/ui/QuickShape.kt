@@ -21,6 +21,11 @@ internal data class QuickShapeResult(
     val points: List<DrawPoint>,
 )
 
+internal fun adjustHeldSmartLine(result: QuickShapeResult, pencil: DrawPoint): QuickShapeResult {
+    if (result.type != QuickShapeType.Line || result.points.size < 2) return result
+    return result.copy(points = listOf(result.points.first(), pencil))
+}
+
 /**
  * Recognises deliberately simple held brush strokes and returns a clean replacement path.
  *

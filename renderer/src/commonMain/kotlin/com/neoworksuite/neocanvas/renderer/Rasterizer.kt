@@ -46,6 +46,180 @@ data class RasterColor(val red: Int, val green: Int, val blue: Int) {
     init { require(red in 0..255 && green in 0..255 && blue in 0..255) }
 }
 
+data class IncrementalRasterStrokePreview(
+    val patch: RasterPatch,
+    val confirmedPoint: RasterPoint?,
+    val processedStampCount: Int,
+    val newStampCount: Int,
+)
+
+/**
+ * Builds a live stroke from the same deterministic stamps used by [Rasterizer.stroke].
+ * Only spacing-confirmed stamps are accumulated while the pointer is down. The moving endpoint is
+ * rendered transiently for the live patch and added once by [finish], so extending a stroke never
+ * double-paints temporary endpoints.
+ */
+class IncrementalRasterStroke(
+    existing: TileStore,
+    private val layerId: String,
+    private val color: RasterColor,
+    private val size: Float,
+    private val opacity: Float,
+    private val mode: BrushMode,
+    private val canvasWidth: Int,
+    private val canvasHeight: Int,
+    private val acceptsPixel: (Int, Int) -> Boolean = { _, _ -> true },
+    private val brush: BrushDefinition? = null,
+    private val symmetry: DrawingSymmetry = DrawingSymmetry.None,
+    private val alphaLocked: Boolean = false,
+    private val assetResolver: BrushAssetResolver = BrushAssetResolver { null },
+) {
+    private val baselineSnapshot = existing.snapshot()
+    private val baseline: TileStore by lazy { TileStore(baselineSnapshot) }
+    private val working = TileStore(baselineSnapshot)
+    private val changedKeys = linkedSetOf<TileKey>()
+    private val confirmedSamples = mutableListOf<RasterStampSample>()
+
+    fun update(points: List<RasterPoint>): IncrementalRasterStrokePreview {
+        val taper = brush?.stamp?.let { it.startTaper > 0f || it.endTaper > 0f } == true
+        if (!taper) return advance(points, finished = false)
+        val patch = Rasterizer.stroke(
+            existing = baseline,
+            layerId = layerId,
+            points = points,
+            color = color,
+            size = size,
+            opacity = opacity,
+            mode = mode,
+            canvasWidth = canvasWidth,
+            canvasHeight = canvasHeight,
+            acceptsPixel = acceptsPixel,
+            brush = brush,
+            symmetry = symmetry,
+            alphaLocked = alphaLocked,
+            assetResolver = assetResolver,
+        )
+        val count = Rasterizer.plannedStrokeStampCount(points, size, brush)
+        return IncrementalRasterStrokePreview(patch, points.lastOrNull(), count, count)
+    }
+
+    fun finish(points: List<RasterPoint>): IncrementalRasterStrokePreview {
+        val taper = brush?.stamp?.let { it.startTaper > 0f || it.endTaper > 0f } == true
+        if (taper) {
+            val patch = Rasterizer.stroke(
+                existing = baseline,
+                layerId = layerId,
+                points = points,
+                color = color,
+                size = size,
+                opacity = opacity,
+                mode = mode,
+                canvasWidth = canvasWidth,
+                canvasHeight = canvasHeight,
+                acceptsPixel = acceptsPixel,
+                brush = brush,
+                symmetry = symmetry,
+                alphaLocked = alphaLocked,
+                assetResolver = assetResolver,
+            )
+            return IncrementalRasterStrokePreview(patch, points.lastOrNull(),
+                Rasterizer.plannedStrokeStampCount(points, size, brush), 0)
+        }
+        return advance(points, finished = true)
+    }
+
+    private fun advance(points: List<RasterPoint>, finished: Boolean): IncrementalRasterStrokePreview {
+        if (points.isEmpty()) return IncrementalRasterStrokePreview(cumulativePatch(), null, confirmedSamples.size, 0)
+        val planned = Rasterizer.plannedRasterStampSamples(points, size, brush)
+        val targetCount = if (finished || planned.size <= 1) planned.size else planned.size - 1
+        val common = min(confirmedSamples.size, targetCount)
+        val prefixChanged = (0 until common).any { index ->
+            val previous = confirmedSamples[index]
+            val next = planned[index]
+            previous.point != next.point || previous.tangentRadians != next.tangentRadians
+        }
+        if (prefixChanged) {
+            working.restore(baselineSnapshot)
+            changedKeys.clear()
+            confirmedSamples.clear()
+        }
+        val newSamples = planned.subList(confirmedSamples.size, targetCount)
+        if (newSamples.isNotEmpty()) {
+            val patch = Rasterizer.strokeSamples(
+                existing = working,
+                layerId = layerId,
+                samples = newSamples,
+                stampIndexOffset = confirmedSamples.size,
+                color = color,
+                size = size,
+                opacity = opacity,
+                mode = mode,
+                canvasWidth = canvasWidth,
+                canvasHeight = canvasHeight,
+                acceptsPixel = acceptsPixel,
+                brush = brush,
+                symmetry = symmetry,
+                alphaLocked = alphaLocked,
+                assetResolver = assetResolver,
+            )
+            changedKeys += working.applyPatch(patch)
+            confirmedSamples += newSamples
+        }
+        val confirmedPatch = cumulativePatch()
+        val movingEndpointPatch = if (!finished && planned.size > 1) {
+            Rasterizer.strokeSamples(
+                existing = working,
+                layerId = layerId,
+                samples = listOf(planned.last()),
+                stampIndexOffset = planned.lastIndex,
+                color = color,
+                size = size,
+                opacity = opacity,
+                mode = mode,
+                canvasWidth = canvasWidth,
+                canvasHeight = canvasHeight,
+                acceptsPixel = acceptsPixel,
+                brush = brush,
+                symmetry = symmetry,
+                alphaLocked = alphaLocked,
+                assetResolver = assetResolver,
+            )
+        } else null
+        return IncrementalRasterStrokePreview(
+            patch = movingEndpointPatch?.let { mergePatches(confirmedPatch, it) } ?: confirmedPatch,
+            confirmedPoint = planned.lastOrNull()?.point,
+            processedStampCount = confirmedSamples.size,
+            newStampCount = newSamples.size,
+        )
+    }
+
+    private fun mergePatches(base: RasterPatch, overlay: RasterPatch): RasterPatch {
+        val merged = linkedMapOf<TileKey, ByteArray?>()
+        merged.putAll(base.changes)
+        merged.putAll(overlay.changes)
+        val replacements = linkedMapOf<TileKey, ByteArray>()
+        val removals = linkedSetOf<TileKey>()
+        merged.forEach { (key, pixels) ->
+            if (pixels == null) removals += key else replacements[key] = pixels
+        }
+        return RasterPatch.of(replacements, removals)
+    }
+
+    private fun cumulativePatch(): RasterPatch {
+        val replacements = linkedMapOf<TileKey, ByteArray>()
+        val removals = linkedSetOf<TileKey>()
+        changedKeys.forEach { key ->
+            val current = working.read(key)
+            val original = baselineSnapshot[key]
+            when {
+                current == null && original != null -> removals += key
+                current != null && (original == null || !current.contentEquals(original)) -> replacements[key] = current
+            }
+        }
+        return RasterPatch.of(replacements, removals)
+    }
+}
+
 /**
  * Stamps a simple, original round brush into sparse 256px RGBA tiles. The returned patch is not
  * applied automatically: callers can pair it with one ApplyRasterPatch history command.
@@ -83,6 +257,31 @@ object Rasterizer {
         require(opacity in 0f..1f)
         if (points.isEmpty()) return RasterPatch.of(emptyMap())
 
+        val stamps = interpolateStrokeStamps(points, size, brush)
+        return strokeSamples(
+            existing, layerId, stamps, 0, color, size, opacity, mode, canvasWidth, canvasHeight,
+            acceptsPixel, brush, symmetry, alphaLocked, assetResolver,
+        )
+    }
+
+    internal fun strokeSamples(
+        existing: TileStore,
+        layerId: String,
+        samples: List<RasterStampSample>,
+        stampIndexOffset: Int,
+        color: RasterColor,
+        size: Float,
+        opacity: Float,
+        mode: BrushMode,
+        canvasWidth: Int,
+        canvasHeight: Int,
+        acceptsPixel: (Int, Int) -> Boolean,
+        brush: BrushDefinition?,
+        symmetry: DrawingSymmetry,
+        alphaLocked: Boolean,
+        assetResolver: BrushAssetResolver,
+    ): RasterPatch {
+        if (samples.isEmpty()) return RasterPatch.of(emptyMap())
         val stampSpec = brush?.stamp
         val shapeRefs = stampSpec?.resolvedShapes.orEmpty()
         val resolvedShapes = shapeRefs.associateWith { ref ->
@@ -92,11 +291,10 @@ object Rasterizer {
             requireNotNull(assetResolver.resolve(ref)) { "Missing brush grain asset '${ref.id}'." }
         }
         val resolvedAssets = ResolvedBrushAssets(resolvedShapes, resolvedGrain)
-
         val working = linkedMapOf<TileKey, ByteArray>()
         fun tile(key: TileKey): ByteArray = working.getOrPut(key) { existing.read(key) ?: ByteArray(TileFormat.BYTES_PER_TILE) }
-        val stamps = interpolateStrokeStamps(points, size, brush)
-        stamps.forEachIndexed { stampIndex, sample ->
+        samples.forEachIndexed { localStampIndex, sample ->
+            val stampIndex = stampIndexOffset + localStampIndex
             val point = sample.point
             val dynamics = brush?.dynamics
             val scatterRadius = size * (dynamics?.scatter ?: 0f) * .72f
@@ -310,24 +508,35 @@ object Rasterizer {
         val wetBlend = wetMix * .28f
         val stampColor = jitteredColor(color, stampSpec, stampIndex, subStamp)
 
-        for (y in top..bottom) for (x in left..right) {
-            if (!acceptsPixel(x, y)) continue
-            val dx = x + .5f - point.x
-            val dy = y + .5f - point.y
-            val rotatedX = dx * angleCos - dy * angleSin
-            val rotatedY = dx * angleSin + dy * angleCos
-            val scaledY = rotatedY * inverseShapeRatio
-            val distance = sqrt(rotatedX * rotatedX + scaledY * scaledY) / radius
-            val edge = when {
-                distance > outerDistance -> 0f
-                hardness >= .999f -> (radius + .5f - distance * radius).coerceIn(0f, 1f)
-                distance <= hardness -> 1f
-                else -> ((outerDistance - distance) / (outerDistance - hardness)).coerceIn(0f, 1f)
-            }
-            val pixelNoise = noise01(x, y, 101)
-            val maskX = if (flipX) -dx else dx
-            val maskY = if (flipY) -dy else dy
-            var coverage = maskSampler?.coverage(maskX / radius, maskY / radius) ?: when (tip) {
+        val firstTileX = tileCoordinate(left)
+        val lastTileX = tileCoordinate(right)
+        val firstTileY = tileCoordinate(top)
+        val lastTileY = tileCoordinate(bottom)
+        for (tileY in firstTileY..lastTileY) for (tileX in firstTileX..lastTileX) {
+            val key = TileKey(layerId, tileX, tileY)
+            val pixels = tile(key)
+            val tileLeft = max(left, tileX * TILE_SIZE_PIXELS)
+            val tileRight = min(right, (tileX + 1) * TILE_SIZE_PIXELS - 1)
+            val tileTop = max(top, tileY * TILE_SIZE_PIXELS)
+            val tileBottom = min(bottom, (tileY + 1) * TILE_SIZE_PIXELS - 1)
+            for (y in tileTop..tileBottom) for (x in tileLeft..tileRight) {
+                if (!acceptsPixel(x, y)) continue
+                val dx = x + .5f - point.x
+                val dy = y + .5f - point.y
+                val rotatedX = dx * angleCos - dy * angleSin
+                val rotatedY = dx * angleSin + dy * angleCos
+                val scaledY = rotatedY * inverseShapeRatio
+                val distance = sqrt(rotatedX * rotatedX + scaledY * scaledY) / radius
+                val edge = when {
+                    distance > outerDistance -> 0f
+                    hardness >= .999f -> (radius + .5f - distance * radius).coerceIn(0f, 1f)
+                    distance <= hardness -> 1f
+                    else -> ((outerDistance - distance) / (outerDistance - hardness)).coerceIn(0f, 1f)
+                }
+                val pixelNoise = noise01(x, y, 101)
+                val maskX = if (flipX) -dx else dx
+                val maskY = if (flipY) -dy else dy
+                var coverage = maskSampler?.coverage(maskX / radius, maskY / radius) ?: when (tip) {
                 BrushTip.Round -> if (brush == null) { if (distance <= 1f) 1f else 0f } else edge
                 BrushTip.SoftRound -> (1f - distance * distance).coerceIn(0f, 1f).let { it * it * it }
                 BrushTip.Flat -> if (abs(rotatedX) <= radius && abs(rotatedY) <= flatHalfHeight) edge else 0f
@@ -371,36 +580,42 @@ object Rasterizer {
                     } else 0f
                 }
             }
-            coverage *= if (grainSampler != null) {
-                val localX = maskX / radius
-                val localY = maskY / radius
-                .18f + .82f * grainSampler.coverage(x + .5f, y + .5f, localX, localY)
-            } else {
-                1f - grain * (1f - pixelNoise) * .78f
-            }
-            if (wetMix > 0f && distance <= 1f) {
-                val bloom = (1f - distance * distance).coerceIn(0f, 1f) * (.32f + .68f * pixelNoise)
-                coverage = coverage * wetRetain + bloom * wetBlend
-            }
-            val strength = opacity * opacityPressure * taper * coverage
-            if (strength <= 0f) continue
-            val key = TileKey(layerId, tileCoordinate(x), tileCoordinate(y))
-            val pixels = tile(key)
-            val localX = x - key.x * TILE_SIZE_PIXELS
-            val localY = y - key.y * TILE_SIZE_PIXELS
-            val offset = (localY * TILE_SIZE_PIXELS + localX) * 4
-            val originalAlpha = pixels[offset + 3]
-            if (alphaLocked && (originalAlpha.toInt() and 255) == 0) continue
-            if (mode == BrushMode.ERASE) {
-                if (alphaLocked) continue
-                val remaining = ((pixels[offset + 3].toInt() and 255) * (1f - strength)).toInt().coerceIn(0, 255)
-                pixels[offset + 3] = remaining.toByte()
-                if (remaining == 0) {
-                    pixels[offset] = 0; pixels[offset + 1] = 0; pixels[offset + 2] = 0
+                coverage *= if (grainSampler != null) {
+                    val localX = maskX / radius
+                    val localY = maskY / radius
+                    .18f + .82f * grainSampler.coverage(x + .5f, y + .5f, localX, localY)
+                } else {
+                    1f - grain * (1f - pixelNoise) * .78f
                 }
-            } else {
-                blend(pixels, offset, stampColor, strength)
-                if (alphaLocked) pixels[offset + 3] = originalAlpha
+                if (wetMix > 0f && distance <= 1f) {
+                    val bloom = (1f - distance * distance).coerceIn(0f, 1f) * (.32f + .68f * pixelNoise)
+                    coverage = coverage * wetRetain + bloom * wetBlend
+                }
+                val strength = opacity * opacityPressure * taper * coverage
+                if (strength <= 0f) continue
+                val localX = x - tileX * TILE_SIZE_PIXELS
+                val localY = y - tileY * TILE_SIZE_PIXELS
+                val offset = (localY * TILE_SIZE_PIXELS + localX) * 4
+                val originalAlpha = pixels[offset + 3]
+                if (alphaLocked && (originalAlpha.toInt() and 255) == 0) continue
+                if (mode == BrushMode.ERASE) {
+                    if (alphaLocked) continue
+                    val remaining = ((pixels[offset + 3].toInt() and 255) * (1f - strength)).toInt().coerceIn(0, 255)
+                    pixels[offset + 3] = remaining.toByte()
+                    if (remaining == 0) {
+                        pixels[offset] = 0; pixels[offset + 1] = 0; pixels[offset + 2] = 0
+                    }
+                } else {
+                    if (strength >= .999f && !alphaLocked) {
+                        pixels[offset] = stampColor.red.toByte()
+                        pixels[offset + 1] = stampColor.green.toByte()
+                        pixels[offset + 2] = stampColor.blue.toByte()
+                        pixels[offset + 3] = 255.toByte()
+                    } else {
+                        blend(pixels, offset, stampColor, strength)
+                    }
+                    if (alphaLocked) pixels[offset + 3] = originalAlpha
+                }
             }
         }
     }
