@@ -79,6 +79,8 @@ import com.neoworksuite.neocanvas.core.model.LineCap
 import com.neoworksuite.neocanvas.core.model.LineMarker
 import com.neoworksuite.neocanvas.core.model.LineStyle
 import com.neoworksuite.neocanvas.core.model.ShapeKind
+import com.neoworksuite.neocanvas.brushes.BrushDefinition
+import com.neoworksuite.neocanvas.brushes.BrushTip
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -896,8 +898,7 @@ fun CanvasWorkspace(
                             color = state.color,
                             size = state.brushSize,
                             opacity = state.brushOpacity,
-                            pressureSize = state.brush.pressureSize,
-                            pressureOpacity = state.brush.pressureOpacity,
+                            brush = state.brush,
                             symmetry = state.symmetry,
                             canvasWidth = document.width.toFloat(),
                             canvasHeight = document.height.toFloat(),
@@ -2075,13 +2076,26 @@ internal fun immediateStrokeAlpha(opacity: Float, pressure: Float, pressureOpaci
     return opacity.coerceIn(0f, 1f) * (1f - (1f - normalized) * response)
 }
 
+internal fun immediateStrokeCoverage(brush: BrushDefinition): Float {
+    val tipCoverage = when (brush.tip) {
+        BrushTip.Round, BrushTip.Flat, BrushTip.Pixel -> 1f
+        BrushTip.Pencil -> .68f
+        BrushTip.SoftRound -> .62f
+        BrushTip.DryPaint, BrushTip.Bristle, BrushTip.Chalk -> .55f
+        BrushTip.Water, BrushTip.Spray -> .46f
+        BrushTip.Leaf, BrushTip.Grass, BrushTip.Bark -> .72f
+    }
+    val grainCoverage = 1f - brush.dynamics.grain * .22f
+    val stampCoverage = if (brush.stamp?.grain != null) .92f else 1f
+    return (tipCoverage * grainCoverage * stampCoverage).coerceIn(.3f, 1f)
+}
+
 private fun DrawScope.drawImmediateStrokePreview(
     points: List<DrawPoint>,
     color: Color,
     size: Float,
     opacity: Float,
-    pressureSize: Float,
-    pressureOpacity: Float,
+    brush: BrushDefinition,
     symmetry: com.neoworksuite.neocanvas.renderer.DrawingSymmetry,
     canvasWidth: Float,
     canvasHeight: Float,
@@ -2100,14 +2114,14 @@ private fun DrawScope.drawImmediateStrokePreview(
     }
 
     fun previewColor(pressure: Float): Color =
-        color.copy(alpha = immediateStrokeAlpha(opacity, pressure, pressureOpacity))
+        color.copy(alpha = immediateStrokeAlpha(opacity, pressure, brush.pressureOpacity) * immediateStrokeCoverage(brush))
 
     if (points.size == 1) {
         val point = points.single()
         mirrored(point).forEach { sample ->
             drawCircle(
                 color = previewColor(sample.pressure),
-                radius = immediateStrokeWidth(size, sample.pressure, pressureSize) / 2f,
+                radius = immediateStrokeWidth(size, sample.pressure, brush.pressureSize) / 2f,
                 center = Offset(sample.x, sample.y),
             )
         }
@@ -2125,7 +2139,7 @@ private fun DrawScope.drawImmediateStrokePreview(
     }
     val averagePressure = points.fold(0f) { total, point -> total + point.pressure } / points.size
     val style = Stroke(
-        width = immediateStrokeWidth(size, averagePressure, pressureSize),
+        width = immediateStrokeWidth(size, averagePressure, brush.pressureSize),
         cap = StrokeCap.Round,
         join = StrokeJoin.Round,
     )

@@ -3,7 +3,7 @@ package com.neoworksuite.neocanvas.ui
 /** User-visible release identity and official NeoWorks destinations. */
 internal object NeoCanvasReleaseInfo {
     const val marketingVersion: String = "1.0.0"
-    const val buildNumber: String = "6"
+    const val buildNumber: String = "7"
     const val stage: String = "Release candidate"
     const val websiteUrl: String = "https://neoworkssuite.com"
     const val communityUrl: String = "https://community.neoworkssuite.com"

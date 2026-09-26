@@ -2,6 +2,8 @@ package com.neoworksuite.neocanvas.ui
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+import com.neoworksuite.neocanvas.brushes.BuiltInBrushes
 
 class ImmediateStrokePreviewTest {
     @Test
@@ -24,5 +26,13 @@ class ImmediateStrokePreviewTest {
     fun live_alpha_matches_brush_pressure_without_segment_accumulation() {
         assertEquals(.4f, immediateStrokeAlpha(.8f, .5f, 1f), .001f)
         assertEquals(.8f, immediateStrokeAlpha(.8f, .5f, 0f), .001f)
+    }
+
+    @Test
+    fun graphite_live_trace_accounts_for_grain_before_commit() {
+        val coverage = immediateStrokeCoverage(BuiltInBrushes.pencil)
+
+        assertTrue(coverage in .3f..<.7f)
+        assertTrue(BuiltInBrushes.pencil.opacity * coverage < BuiltInBrushes.pencil.opacity)
     }
 }
