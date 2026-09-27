@@ -296,6 +296,7 @@ fun NeoCanvasApp(
                 panel == InspectorPanel.Brushes && state.interfaceSide == InterfaceSide.Automatic -> Alignment.Center
                 else -> responsivePanelAlignment
             }
+            val layerPanelAlignment = if (placement.panelsAtEnd) Alignment.TopEnd else Alignment.TopStart
             val panelModifier = when (panel) {
                 InspectorPanel.Brushes ->
                     Modifier.align(overlayAlignment)
@@ -319,10 +320,11 @@ fun NeoCanvasApp(
                     }
 
                 InspectorPanel.Layers ->
-                    Modifier.align(overlayAlignment)
+                    Modifier.align(layerPanelAlignment)
                         .padding(
-                            end = if (compact) 10.dp else 16.dp,
-                            start = if (compact) 10.dp else 0.dp,
+                            top = layerPanelTopInsetDp().dp,
+                            end = if (placement.panelsAtEnd) (if (compact) 10.dp else 16.dp) else 0.dp,
+                            start = if (!placement.panelsAtEnd) (if (compact) 10.dp else 16.dp) else 0.dp,
                             bottom = 12.dp,
                         )
                         .width(
@@ -332,15 +334,7 @@ fun NeoCanvasApp(
                                 cap = layerPanelMaxWidthDp(compact).dp,
                             ),
                         )
-                        .height(
-                            layerPanelHeightDp(
-                                layerCount = state.document.layers.size,
-                                groupCount = state.document.groups.size,
-                                selectedObjectCount = state.selectedObjectCount,
-                                arrangePicking = state.objectArrangePicking,
-                                compact = compact,
-                            ).dp,
-                        )
+                        .fillMaxHeight()
 
                 InspectorPanel.Effects ->
                     Modifier.align(overlayAlignment)

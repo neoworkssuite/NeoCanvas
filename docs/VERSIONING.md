@@ -8,9 +8,9 @@ checklist, and successful simulator/device/smoke/visual validation; it was not
 chosen merely because repository consolidation began. Platform parity remains
 separately evidence-gated.
 
-Apple build: `11`
-Android build: `11`
-Windows build: `11`
+Apple build: `12`
+Android build: `12`
+Windows build: `12`
 
 Each store or installer build value is a positive integer that increases for
 every uploaded or distributed binary on that platform. It is independent of

@@ -13,15 +13,8 @@ class LayerPanelInteractionTest {
         assertEquals(300, layerPanelMaxWidthDp(compact = true))
     }
 
-    @Test fun layer_panel_height_tracks_content_and_stops_growing() {
-        assertEquals(284, layerPanelHeightDp(3, 0, selectedObjectCount = 0, arrangePicking = false, compact = false))
-        assertEquals(460, layerPanelHeightDp(40, 4, selectedObjectCount = 0, arrangePicking = false, compact = false))
-        assertEquals(520, layerPanelHeightDp(40, 4, selectedObjectCount = 0, arrangePicking = true, compact = true))
-    }
-
-    @Test fun multi_object_arrange_controls_receive_the_full_panel_height() {
-        assertEquals(460, layerPanelHeightDp(2, 0, selectedObjectCount = 2, arrangePicking = true, compact = false))
-        assertEquals(520, layerPanelHeightDp(3, 0, selectedObjectCount = 3, arrangePicking = true, compact = true))
+    @Test fun layer_panel_begins_below_the_top_toolbar() {
+        assertEquals(72, layerPanelTopInsetDp())
     }
 
     @Test fun panel_dimension_is_resolved_once_from_viewport_and_cap() {
