@@ -26,6 +26,7 @@ import java.io.File
 /** macOS-local chooser and file writer. It never leaves the device or retains an account. */
 class MacEditorFileActions(
     private val documents: com.neoworksuite.neocanvas.core.store.DocumentStore = MacDocumentStore(),
+    private val distribution: String = System.getProperty("neocanvas.distribution", "direct"),
     private val fileChooser: ((String, Int, String?) -> String?)? = null,
 ) : EditorFileActions {
     override val supportsSaveAs = true
@@ -37,7 +38,7 @@ class MacEditorFileActions(
     override val supportsPdfExport = true
     override val supportsTiffExport = true
     override val supportsEditableObjectPsdFlattening = true
-    override val supportsUpdateChecks = true
+    override val supportsUpdateChecks = distribution != "app-store"
     override val updateServiceDescription = "the NeoWorks macOS release service"
     override val updateActionLabel = "Download update"
     override val updateDestinationDescription = "the macOS update download"

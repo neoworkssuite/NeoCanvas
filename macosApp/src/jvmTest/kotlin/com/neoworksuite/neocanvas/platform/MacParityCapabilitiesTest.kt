@@ -21,4 +21,10 @@ class MacParityCapabilitiesTest {
         val actions = MacEditorFileActions()
         assertFalse(actions.openExternalUrl("http://example.invalid"))
     }
+
+    @Test
+    fun app_store_build_disables_the_direct_download_updater() {
+        assertFalse(MacEditorFileActions(distribution = "app-store").supportsUpdateChecks)
+        assertTrue(MacEditorFileActions(distribution = "direct").supportsUpdateChecks)
+    }
 }
