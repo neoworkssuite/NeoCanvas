@@ -268,6 +268,17 @@ fun NeoCanvasApp(
                 )
             }
         }
+        val auxiliaryPanelVisible = state.objectEditorVisible ||
+            state.psdCompatibilityVisible || state.recentStrokesVisible ||
+            state.workbenchPanelVisible || state.versionsVisible || state.settingsVisible
+        if (!state.inspectorVisible && auxiliaryPanelVisible) {
+            Box(
+                Modifier.fillMaxSize().clickable(
+                    interactionSource = null,
+                    indication = null,
+                ) { state.dismissInspectorToCanvas() },
+            )
+        }
         if (state.inspectorVisible) {
             Box(
                 Modifier.fillMaxSize().clickable(
@@ -309,9 +320,9 @@ fun NeoCanvasApp(
                             start = if (compact) 10.dp else 0.dp,
                             bottom = 12.dp,
                         )
-                        .fillMaxWidth(if (compact) .94f else .38f)
+                        .fillMaxWidth(if (compact) .88f else .32f)
                         .fillMaxHeight(if (compact) .68f else .82f)
-                        .widthIn(max = 390.dp)
+                        .widthIn(max = layerPanelMaxWidthDp(compact).dp)
                         .heightIn(max = 680.dp)
 
                 InspectorPanel.Effects ->
@@ -343,7 +354,8 @@ fun NeoCanvasApp(
                 panelModifier
                     .clip(RoundedCornerShape(16.dp))
                     .background(NeoCanvasColors.panel.copy(alpha = .98f))
-                    .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(16.dp)),
+                    .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(16.dp))
+                    .clickable(interactionSource = null, indication = null) {},
             ) {
                 StudioInspector(state, compact = compact, modifier = Modifier.fillMaxSize())
                 Text(
@@ -370,7 +382,8 @@ fun NeoCanvasApp(
                     .heightIn(max = 700.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(NeoCanvasColors.panel.copy(alpha = .98f))
-                    .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(16.dp)),
+                    .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(16.dp))
+                    .clickable(interactionSource = null, indication = null) {},
             ) {
                 ObjectPanel(
                     state = state,
@@ -393,7 +406,8 @@ fun NeoCanvasApp(
                     .heightIn(max = 720.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(NeoCanvasColors.panel.copy(alpha = .98f))
-                    .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(16.dp)),
+                    .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(16.dp))
+                    .clickable(interactionSource = null, indication = null) {},
             ) {
                 PsdCompatibilityPanel(
                     state = state,
@@ -416,7 +430,8 @@ fun NeoCanvasApp(
                     .heightIn(max = 700.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(NeoCanvasColors.panel.copy(alpha = .98f))
-                    .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(16.dp)),
+                    .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(16.dp))
+                    .clickable(interactionSource = null, indication = null) {},
             ) {
                 RecentStrokesPanel(
                     state = state,
@@ -439,7 +454,8 @@ fun NeoCanvasApp(
                     .heightIn(max = 700.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(NeoCanvasColors.panel.copy(alpha = .98f))
-                    .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(16.dp)),
+                    .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(16.dp))
+                    .clickable(interactionSource = null, indication = null) {},
             ) {
                 WorkbenchPanel(
                     state = state,
@@ -462,7 +478,8 @@ fun NeoCanvasApp(
                     .heightIn(max = 700.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(NeoCanvasColors.panel.copy(alpha = .98f))
-                    .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(16.dp)),
+                    .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(16.dp))
+                    .clickable(interactionSource = null, indication = null) {},
             ) {
                 VersionsPanel(
                     state = state,
@@ -477,7 +494,8 @@ fun NeoCanvasApp(
                     .fillMaxWidth(.82f).fillMaxHeight(.82f)
                     .widthIn(max = 720.dp).heightIn(max = 680.dp)
                     .clip(RoundedCornerShape(18.dp)).background(NeoCanvasColors.panel)
-                    .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(18.dp)),
+                    .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(18.dp))
+                    .clickable(interactionSource = null, indication = null) {},
             ) {
                 SettingsPanel(
                     state = state,

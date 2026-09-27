@@ -7,6 +7,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class LayerPanelInteractionTest {
+    @Test fun layer_panel_uses_the_compact_width_on_ipad_and_narrow_layouts() {
+        assertEquals(320, layerPanelMaxWidthDp(compact = false))
+        assertEquals(320, layerPanelMaxWidthDp(compact = true))
+    }
+
     @Test fun dragging_a_displayed_layer_down_reorders_it_and_undo_restores_the_stack() {
         val state = EditorState(DocumentHistory(CanvasDocument.blank(16, 16)))
         state.addLayer() // layer-1, bottom
@@ -40,4 +45,3 @@ class LayerPanelInteractionTest {
         assertTrue(allowsLayerReorder(LayerDragRegion.Handle))
     }
 }
-

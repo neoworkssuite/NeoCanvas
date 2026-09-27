@@ -21,6 +21,16 @@ import kotlin.test.assertTrue
 
 class EditorStateTest {
     @Test
+    fun dismissing_a_floating_panel_returns_from_settings_to_the_canvas() {
+        val state = EditorState(DocumentHistory(CanvasDocument.blank(32, 32)))
+        state.openSettings()
+
+        state.dismissInspectorToCanvas()
+
+        assertFalse(state.settingsVisible)
+    }
+
+    @Test
     fun active_line_geometry_edits_are_single_undoable_commands() {
         val state = EditorState(DocumentHistory(CanvasDocument.blank(400, 300)))
         state.addShapeObject(ShapeKind.Line)

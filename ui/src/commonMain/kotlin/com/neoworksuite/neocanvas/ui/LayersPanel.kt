@@ -42,6 +42,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.neoworksuite.neocanvas.core.model.Layer
@@ -52,6 +53,7 @@ import kotlin.math.roundToInt
 
 internal enum class LayerDragRegion { Handle, Body, Controls }
 internal fun allowsLayerReorder(region: LayerDragRegion): Boolean = region == LayerDragRegion.Handle
+internal fun layerPanelMaxWidthDp(compact: Boolean): Int = 320
 
 @Composable
 fun StudioInspector(state: EditorState, compact: Boolean, modifier: Modifier = Modifier) {
@@ -78,26 +80,19 @@ fun LayersPanel(state: EditorState, modifier: Modifier = Modifier) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("LAYERS", color = NeoCanvasColors.paper, fontSize = 11.sp, letterSpacing = 1.2.sp)
-            Spacer(Modifier.weight(1f))
             Text(
-                state.document.layers.size.toString() + " LAYERS" +
-                    if (state.document.groups.isNotEmpty()) " · " + state.document.groups.size + " GROUPS" else "" +
-                    if (state.sleepingLayerCount > 0) " · " + state.sleepingLayerCount + " SLEEPING" else "" +
-                    if (state.selectedObjectCount > 0) " · " + state.selectedObjectCount + " ARRANGE" else "",
+                state.document.layers.size.toString(),
                 color = NeoCanvasColors.faint,
                 fontSize = 9.sp,
-                letterSpacing = .5.sp,
+                modifier = Modifier.padding(start = 5.dp),
             )
+            Spacer(Modifier.weight(1f))
             LayerMemoryMenu(state)
-            LayerTrayAction(
-                if (state.objectArrangePicking) "Pick ✓" else "Pick",
-                Modifier.padding(start = 5.dp),
-            ) { state.toggleObjectArrangePicking() }
-            LayerTrayAction("Group +", Modifier.padding(start = 5.dp)) { state.addGroupFromActive() }
-            Text("＋", color = NeoCanvasColors.ink, fontSize = 20.sp,
-                modifier = Modifier.padding(start = 6.dp).clip(RoundedCornerShape(9.dp)).background(NeoCanvasColors.accent)
-                    .clickable { state.addLayer() }.padding(horizontal = 10.dp, vertical = 3.dp)
-                    .semantics { contentDescription = "New layer" })
+            LayerHeaderAction(Glyph.Select, "Pick objects", selected = state.objectArrangePicking) {
+                state.toggleObjectArrangePicking()
+            }
+            LayerHeaderAction(Glyph.Group, "Group active layer") { state.addGroupFromActive() }
+            LayerHeaderAction(Glyph.Add, "New layer", accent = true) { state.addLayer() }
         }
         if (state.selectedObjectCount > 0 || state.objectArrangePicking) {
             ObjectArrangeBar(state)
@@ -612,14 +607,7 @@ private fun LayerGroupPicker(layer: Layer, state: EditorState) {
 private fun LayerMemoryMenu(state: EditorState) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        Text(
-            "•••",
-            color = NeoCanvasColors.muted,
-            fontSize = 17.sp,
-            modifier = Modifier.clickable { expanded = true }
-                .padding(horizontal = 7.dp, vertical = 4.dp)
-                .semantics { contentDescription = "Layer memory options" },
-        )
+        LayerHeaderAction(Glyph.Tools, "Layer memory options") { expanded = true }
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
@@ -653,6 +641,34 @@ private fun LayerMemoryMenu(state: EditorState) {
                 },
             )
         }
+    }
+}
+
+@Composable
+private fun LayerHeaderAction(
+    glyph: Glyph,
+    label: String,
+    selected: Boolean = false,
+    accent: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val highlighted = selected || accent
+    Box(
+        Modifier.size(32.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (highlighted) NeoCanvasColors.accent else Color.Transparent)
+            .clickable(onClick = onClick)
+            .semantics {
+                contentDescription = label
+                this.selected = selected
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        StudioGlyph(
+            glyph,
+            if (highlighted) NeoCanvasColors.ink else NeoCanvasColors.muted,
+            Modifier.size(19.dp),
+        )
     }
 }
 

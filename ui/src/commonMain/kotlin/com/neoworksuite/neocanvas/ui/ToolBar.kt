@@ -123,16 +123,13 @@ fun StudioTopBar(state: EditorState, compact: Boolean, modifier: Modifier = Modi
     }
 }
 
-private enum class ActionMenuPage { Root, Add, Canvas, Assist, Tools, File }
-
 @Composable
 private fun StudioActionsMenu(state: EditorState) {
     var expanded by remember { mutableStateOf(false) }
-    var page by remember { mutableStateOf(ActionMenuPage.Root) }
+    var section by remember { mutableStateOf(StudioActionSection.Add) }
 
     fun closeMenu() {
         expanded = false
-        page = ActionMenuPage.Root
     }
 
     Box {
@@ -147,7 +144,7 @@ private fun StudioActionsMenu(state: EditorState) {
                     .semantics { contentDescription = "Actions menu" },
                 contentAlignment = Alignment.Center,
             ) {
-                StudioGlyph(Glyph.Ellipsis, if (expanded) NeoCanvasColors.ink else NeoCanvasColors.muted)
+                StudioGlyph(Glyph.Wrench, if (expanded) NeoCanvasColors.ink else NeoCanvasColors.muted)
                 if (state.hasUnsavedChanges) {
                     Box(
                         Modifier.size(7.dp).clip(CircleShape)
@@ -162,88 +159,111 @@ private fun StudioActionsMenu(state: EditorState) {
             expanded = expanded,
             onDismissRequest = { closeMenu() },
             containerColor = NeoCanvasColors.panelRaised,
+            modifier = Modifier.width(360.dp),
         ) {
-            when (page) {
-                ActionMenuPage.Root -> {
-                    ActionSubmenuItem("Add / Import", StudioMenuCommand.AddImport) { page = ActionMenuPage.Add }
-                    ActionSubmenuItem("Canvas", StudioMenuCommand.Canvas) { page = ActionMenuPage.Canvas }
-                    ActionSubmenuItem("Drawing Assist", StudioMenuCommand.DrawingAssist) { page = ActionMenuPage.Assist }
-                    ActionSubmenuItem("Utility Tools", StudioMenuCommand.UtilityTools) { page = ActionMenuPage.Tools }
-                    if (state.supportsVersions) {
-                        ActionItem("Versions…") { closeMenu(); state.openVersions() }
-                    }
-                    if (state.supportsWorkbench) {
-                        ActionItem("Workbench…") { closeMenu(); state.openWorkbench() }
-                    }
-                    if (state.recentEditableStrokes.isNotEmpty()) {
-                        ActionItem("Recent Strokes…") { closeMenu(); state.openRecentStrokes() }
-                    }
-                    ActionSubmenuItem("File / Export", StudioMenuCommand.FileExport) { page = ActionMenuPage.File }
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                studioActionTabs().forEach { tab ->
+                    ActionSectionTab(tab, selected = section == tab.section) { section = tab.section }
                 }
-                ActionMenuPage.Add -> {
-                    ActionBackItem { page = ActionMenuPage.Root }
-                    ActionItem("Add Text") { closeMenu(); state.addTextObject() }
-                    ActionItem("Add Rectangle") { closeMenu(); state.addShapeObject(com.neoworksuite.neocanvas.core.model.ShapeKind.Rectangle) }
-                    ActionItem("Add Ellipse") { closeMenu(); state.addShapeObject(com.neoworksuite.neocanvas.core.model.ShapeKind.Ellipse) }
-                    ActionItem("Add Line") { closeMenu(); state.addShapeObject(com.neoworksuite.neocanvas.core.model.ShapeKind.Line) }
-                    ActionItem("Import Image…") { closeMenu(); state.importImage() }
+            }
+            HorizontalDivider(color = NeoCanvasColors.line)
+            when (section) {
+                StudioActionSection.Add -> {
+                    ActionItem("Add Text", Glyph.Text) { closeMenu(); state.addTextObject() }
+                    ActionItem("Add Rectangle", Glyph.Shape) { closeMenu(); state.addShapeObject(com.neoworksuite.neocanvas.core.model.ShapeKind.Rectangle) }
+                    ActionItem("Add Ellipse", Glyph.Shape) { closeMenu(); state.addShapeObject(com.neoworksuite.neocanvas.core.model.ShapeKind.Ellipse) }
+                    ActionItem("Add Line", Glyph.Stroke) { closeMenu(); state.addShapeObject(com.neoworksuite.neocanvas.core.model.ShapeKind.Line) }
+                    ActionItem("Import Image…", Glyph.ImportImage) { closeMenu(); state.importImage() }
                     if (state.supportsPsdImport) {
-                        ActionItem("Import Photoshop PSD…") { closeMenu(); state.importPsd() }
+                        ActionItem("Import Photoshop PSD…", Glyph.Import) { closeMenu(); state.importPsd() }
                     }
                 }
-                ActionMenuPage.Canvas -> {
-                    ActionBackItem { page = ActionMenuPage.Root }
-                    ActionItem("New Canvas…") { closeMenu(); state.newCanvasDialogVisible = true }
-                    ActionItem("Fit Canvas") { closeMenu(); state.resetView() }
+                StudioActionSection.Canvas -> {
+                    ActionItem("New Canvas…", Glyph.New) { closeMenu(); state.newCanvasDialogVisible = true }
+                    ActionItem("Fit Canvas", Glyph.Fit) { closeMenu(); state.resetView() }
+                    HorizontalDivider(color = NeoCanvasColors.line)
+                    ActionItem("Liquify…", Glyph.Fx) { closeMenu(); state.activateLiquifyTool() }
+                    ActionItem("Fill", Glyph.Fill) { closeMenu(); state.activateTool(Tool.Fill) }
+                    ActionItem("Colour Picker", Glyph.Eyedropper) { closeMenu(); state.activateTool(Tool.Eyedropper) }
+                    ActionItem("Pan / Move Canvas", Glyph.Transform) { closeMenu(); state.activateTool(Tool.Pan) }
                 }
-                ActionMenuPage.Assist -> {
-                    ActionBackItem { page = ActionMenuPage.Root }
+                StudioActionSection.Guides -> {
                     ActionItem("Grid Guide", Glyph.Grid, selected = state.gridGuideVisible) {
                         closeMenu()
                         state.gridGuideVisible = !state.gridGuideVisible
                         state.persistPreferences()
                     }
-                    ActionItem("Perspective Guide", selected = state.perspectiveGuideVisible) {
+                    ActionItem("Perspective Guide", Glyph.Assist, selected = state.perspectiveGuideVisible) {
                         closeMenu()
                         state.perspectiveGuideVisible = !state.perspectiveGuideVisible
                         state.persistPreferences()
                     }
-                    ActionItem("Symmetry Off", selected = state.symmetry == DrawingSymmetry.None) { closeMenu(); state.symmetry = DrawingSymmetry.None }
-                    ActionItem("Vertical Symmetry", selected = state.symmetry == DrawingSymmetry.Vertical) { closeMenu(); state.symmetry = DrawingSymmetry.Vertical }
-                    ActionItem("Horizontal Symmetry", selected = state.symmetry == DrawingSymmetry.Horizontal) { closeMenu(); state.symmetry = DrawingSymmetry.Horizontal }
-                    ActionItem("Four-way Symmetry", selected = state.symmetry == DrawingSymmetry.Both) { closeMenu(); state.symmetry = DrawingSymmetry.Both }
+                    ActionItem("Symmetry Off", Glyph.Assist, selected = state.symmetry == DrawingSymmetry.None) { closeMenu(); state.symmetry = DrawingSymmetry.None }
+                    ActionItem("Vertical Symmetry", Glyph.Assist, selected = state.symmetry == DrawingSymmetry.Vertical) { closeMenu(); state.symmetry = DrawingSymmetry.Vertical }
+                    ActionItem("Horizontal Symmetry", Glyph.Assist, selected = state.symmetry == DrawingSymmetry.Horizontal) { closeMenu(); state.symmetry = DrawingSymmetry.Horizontal }
+                    ActionItem("Four-way Symmetry", Glyph.Assist, selected = state.symmetry == DrawingSymmetry.Both) { closeMenu(); state.symmetry = DrawingSymmetry.Both }
                 }
-                ActionMenuPage.Tools -> {
-                    ActionBackItem { page = ActionMenuPage.Root }
-                    ActionItem("Liquify…") { closeMenu(); state.activateLiquifyTool() }
-                    ActionItem("Fill") { closeMenu(); state.activateTool(Tool.Fill) }
-                    ActionItem("Eyedropper") { closeMenu(); state.activateTool(Tool.Eyedropper) }
-                    ActionItem("Pan / Move Canvas") { closeMenu(); state.activateTool(Tool.Pan) }
-                }
-                ActionMenuPage.File -> {
-                    ActionBackItem { page = ActionMenuPage.Root }
-                    ActionItem("Open…") { closeMenu(); state.open() }
-                    ActionItem("Save") { closeMenu(); state.save() }
-                    if (state.supportsSaveAs) {
-                        ActionItem("Save As…") { closeMenu(); state.saveAs() }
+                StudioActionSection.Studio -> {
+                    if (state.supportsVersions) {
+                        ActionItem("Versions…", Glyph.Versions) { closeMenu(); state.openVersions() }
                     }
-                    ActionItem("Export PNG…") { closeMenu(); state.exportPng() }
+                    if (state.supportsWorkbench) {
+                        ActionItem("Workbench…", Glyph.Workbench) { closeMenu(); state.openWorkbench() }
+                    }
+                    if (state.recentEditableStrokes.isNotEmpty()) {
+                        ActionItem("Recent Strokes…", Glyph.Stroke) { closeMenu(); state.openRecentStrokes() }
+                    }
+                    if (!state.supportsVersions && !state.supportsWorkbench && state.recentEditableStrokes.isEmpty()) {
+                        ActionItem("No studio tools available") { closeMenu() }
+                    }
+                }
+                StudioActionSection.Export -> {
+                    ActionItem("Open…", Glyph.Open) { closeMenu(); state.open() }
+                    ActionItem("Save", Glyph.Save) { closeMenu(); state.save() }
+                    if (state.supportsSaveAs) {
+                        ActionItem("Save As…", Glyph.Save) { closeMenu(); state.saveAs() }
+                    }
+                    ActionItem("Export PNG…", Glyph.Export) { closeMenu(); state.exportPng() }
                     if (state.supportsJpegExport) {
-                        ActionItem("Export JPEG…") { closeMenu(); state.exportJpeg() }
+                        ActionItem("Export JPEG…", Glyph.Export) { closeMenu(); state.exportJpeg() }
                     }
                     if (state.supportsPdfExport) {
-                        ActionItem("Export PDF…") { closeMenu(); state.exportPdf() }
+                        ActionItem("Export PDF…", Glyph.Export) { closeMenu(); state.exportPdf() }
                     }
                     if (state.supportsTiffExport) {
-                        ActionItem("Export TIFF…") { closeMenu(); state.exportTiff() }
+                        ActionItem("Export TIFF…", Glyph.Export) { closeMenu(); state.exportTiff() }
                     }
                     if (state.supportsPsdExport) {
-                        ActionItem("PSD Compatibility…") { closeMenu(); state.openPsdCompatibility() }
-                        ActionItem("Export Photoshop PSD…") { closeMenu(); state.exportPsd() }
+                        ActionItem("PSD Compatibility…", Glyph.Layers) { closeMenu(); state.openPsdCompatibility() }
+                        ActionItem("Export Photoshop PSD…", Glyph.Export) { closeMenu(); state.exportPsd() }
                     }
+                }
+                StudioActionSection.Preferences -> {
+                    ActionItem("Settings…", Glyph.Settings) { closeMenu(); state.openSettings() }
+                    ActionItem("Fit Canvas", Glyph.Fit) { closeMenu(); state.resetView() }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ActionSectionTab(tab: StudioActionTab, selected: Boolean, onClick: () -> Unit) {
+    val tint = if (selected) NeoCanvasColors.ink else NeoCanvasColors.muted
+    Column(
+        Modifier.width(54.dp).height(52.dp)
+            .clip(RoundedCornerShape(9.dp))
+            .background(if (selected) NeoCanvasColors.accent else Color.Transparent)
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = tab.label; this.selected = selected },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        StudioGlyph(tab.glyph, tint, Modifier.size(22.dp))
+        Text(tab.label, color = tint, fontSize = 7.sp, maxLines = 1)
     }
 }
 
@@ -253,7 +273,6 @@ private fun ActionItem(
     glyph: Glyph? = null,
     selected: Boolean = false,
     destructive: Boolean = false,
-    submenu: Boolean = false,
     onClick: () -> Unit,
 ) {
     val tint = when {
@@ -266,24 +285,11 @@ private fun ActionItem(
         leadingIcon = glyph?.let { icon -> { StudioGlyph(icon, tint, Modifier.size(21.dp)) } },
         trailingIcon = when {
             selected -> ({ Text("✓", color = NeoCanvasColors.accent) })
-            submenu -> ({ Text("›", color = NeoCanvasColors.muted, fontSize = 18.sp) })
             else -> null
         },
         modifier = Modifier.semantics { this.selected = selected },
         onClick = onClick,
     )
-}
-
-@Composable
-private fun ActionSubmenuItem(label: String, command: StudioMenuCommand, onClick: () -> Unit) {
-    val presentation = menuPresentation(command)
-    ActionItem(label, presentation.glyph, submenu = true, onClick = onClick)
-}
-
-@Composable
-private fun ActionBackItem(onClick: () -> Unit) {
-    ActionItem("Actions", Glyph.Previous, onClick = onClick)
-    HorizontalDivider(color = NeoCanvasColors.line)
 }
 
 @Composable
@@ -423,11 +429,56 @@ fun StudioRail(state: EditorState, modifier: Modifier = Modifier) {
         }
 
         Spacer(Modifier.weight(1f))
-        StudioButton(Glyph.Eyedropper, "Eyedropper", state.tool == Tool.Eyedropper) {
-            state.activateTool(Tool.Eyedropper)
-        }
+        StudioColourPickerButton(state)
         StudioButton(Glyph.Undo, "Undo", enabled = state.canUndo) { state.undo() }
         StudioButton(Glyph.Redo, "Redo", enabled = state.canRedo) { state.redo() }
+    }
+}
+
+@Composable
+private fun StudioColourPickerButton(state: EditorState) {
+    val selected = state.tool == Tool.Eyedropper
+    val tint = if (selected) NeoCanvasColors.ink else NeoCanvasColors.muted
+    StudioTooltip("Colour Picker") {
+        Box(
+            Modifier.size(54.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(if (selected) NeoCanvasColors.accent else Color.Transparent)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) { state.activateTool(Tool.Eyedropper) }
+                .semantics {
+                    contentDescription = "Colour Picker"
+                    this.selected = selected
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Canvas(Modifier.size(30.dp)) {
+                val w = size.width
+                val h = size.height
+                val stroke = 2.2f
+                val barrel = Path().apply {
+                    moveTo(w * .24f, h * .70f)
+                    lineTo(w * .57f, h * .37f)
+                    lineTo(w * .68f, h * .48f)
+                    lineTo(w * .35f, h * .81f)
+                    close()
+                }
+                drawPath(barrel, tint, style = Stroke(stroke, cap = StrokeCap.Round))
+                drawLine(tint, Offset(w * .54f, h * .32f), Offset(w * .73f, h * .51f), stroke, StrokeCap.Round)
+                drawRoundRect(
+                    tint,
+                    Offset(w * .62f, h * .16f),
+                    Size(w * .22f, h * .24f),
+                    androidx.compose.ui.geometry.CornerRadius(w * .08f, w * .08f),
+                    style = Stroke(stroke),
+                )
+                drawLine(tint, Offset(w * .24f, h * .70f), Offset(w * .18f, h * .78f), stroke, StrokeCap.Round)
+                drawCircle(state.color, w * .085f, Offset(w * .17f, h * .88f))
+                drawCircle(tint, w * .085f, Offset(w * .17f, h * .88f), style = Stroke(1.3f))
+            }
+        }
     }
 }
 
@@ -608,12 +659,75 @@ internal fun StudioGlyph(glyph: Glyph, color: Color, modifier: Modifier = Modifi
             drawCircle(color, w * .085f, Offset(w * .79f, h * .76f))
         }
         Glyph.Eyedropper -> {
-            val s = 2.3f
-            line(Offset(w * .24f, h * .76f), Offset(w * .70f, h * .30f), 4.2f)
-            line(Offset(w * .56f, h * .20f), Offset(w * .80f, h * .44f), s)
-            line(Offset(w * .48f, h * .28f), Offset(w * .72f, h * .52f), s)
-            line(Offset(w * .18f, h * .82f), Offset(w * .30f, h * .82f), s)
-            drawCircle(color, w * .055f, Offset(w * .15f, h * .85f))
+            val s = 2.1f
+            val barrel = Path().apply {
+                moveTo(w * .22f, h * .68f)
+                lineTo(w * .56f, h * .34f)
+                lineTo(w * .68f, h * .46f)
+                lineTo(w * .34f, h * .80f)
+                close()
+            }
+            drawPath(barrel, color, style = Stroke(s, cap = StrokeCap.Round))
+            drawRoundRect(
+                color,
+                Offset(w * .61f, h * .14f),
+                Size(w * .23f, h * .25f),
+                androidx.compose.ui.geometry.CornerRadius(w * .08f, w * .08f),
+                style = Stroke(s),
+            )
+            line(Offset(w * .53f, h * .29f), Offset(w * .73f, h * .49f), s)
+            line(Offset(w * .22f, h * .68f), Offset(w * .16f, h * .78f), s)
+            drawCircle(color, w * .07f, Offset(w * .15f, h * .88f), style = Stroke(1.5f))
+        }
+        Glyph.Wrench -> {
+            val s = 2.2f
+            val head = Path().apply {
+                moveTo(w * .66f, h * .18f)
+                cubicTo(w * .82f, h * .15f, w * .88f, h * .30f, w * .82f, h * .43f)
+                lineTo(w * .70f, h * .34f)
+                lineTo(w * .58f, h * .46f)
+                lineTo(w * .67f, h * .58f)
+                cubicTo(w * .54f, h * .64f, w * .39f, h * .58f, w * .42f, h * .42f)
+            }
+            drawPath(head, color, style = Stroke(s, cap = StrokeCap.Round))
+            line(Offset(w * .47f, h * .53f), Offset(w * .22f, h * .78f), 4.0f)
+            drawCircle(color, w * .045f, Offset(w * .21f, h * .79f), style = Stroke(1.5f))
+        }
+        Glyph.Workbench -> {
+            drawRoundRect(color, Offset(w * .15f, h * .24f), Size(w * .70f, h * .48f), androidx.compose.ui.geometry.CornerRadius(3f, 3f), style = Stroke(2f))
+            line(Offset(w * .25f, h * .72f), Offset(w * .20f, h * .86f), 2f)
+            line(Offset(w * .75f, h * .72f), Offset(w * .80f, h * .86f), 2f)
+            drawRect(color.copy(alpha = .55f), Offset(w * .28f, h * .34f), Size(w * .18f, h * .20f), style = Stroke(1.4f))
+            line(Offset(w * .56f, h * .38f), Offset(w * .73f, h * .38f), 1.5f)
+            line(Offset(w * .56f, h * .49f), Offset(w * .69f, h * .49f), 1.5f)
+        }
+        Glyph.Versions -> {
+            drawCircle(color, w * .28f, Offset(w * .52f, h * .52f), style = Stroke(2f))
+            line(Offset(w * .52f, h * .52f), Offset(w * .52f, h * .33f), 2f)
+            line(Offset(w * .52f, h * .52f), Offset(w * .68f, h * .60f), 2f)
+            line(Offset(w * .28f, h * .25f), Offset(w * .18f, h * .25f), 1.8f)
+            line(Offset(w * .18f, h * .25f), Offset(w * .18f, h * .72f), 1.8f)
+            line(Offset(w * .18f, h * .72f), Offset(w * .29f, h * .72f), 1.8f)
+        }
+        Glyph.Stroke -> {
+            val path = Path().apply {
+                moveTo(w * .15f, h * .69f)
+                cubicTo(w * .32f, h * .20f, w * .52f, h * .86f, w * .84f, h * .35f)
+            }
+            drawPath(path, color, style = Stroke(3.2f, cap = StrokeCap.Round))
+        }
+        Glyph.Text -> {
+            line(Offset(w * .20f, h * .22f), Offset(w * .80f, h * .22f), 2.2f)
+            line(Offset(w * .50f, h * .22f), Offset(w * .50f, h * .82f), 2.2f)
+            line(Offset(w * .34f, h * .82f), Offset(w * .66f, h * .82f), 2.2f)
+        }
+        Glyph.Shape -> {
+            drawRoundRect(color, Offset(w * .14f, h * .18f), Size(w * .43f, h * .43f), androidx.compose.ui.geometry.CornerRadius(3f, 3f), style = Stroke(1.9f))
+            drawCircle(color, w * .22f, Offset(w * .64f, h * .63f), style = Stroke(1.9f))
+        }
+        Glyph.Group -> {
+            drawRoundRect(color.copy(alpha = .65f), Offset(w * .28f, h * .18f), Size(w * .53f, h * .48f), androidx.compose.ui.geometry.CornerRadius(3f, 3f), style = Stroke(1.8f))
+            drawRoundRect(color, Offset(w * .16f, h * .34f), Size(w * .53f, h * .48f), androidx.compose.ui.geometry.CornerRadius(3f, 3f), style = Stroke(2f))
         }
         Glyph.New -> { line(Offset(w * .50f, h * .16f), Offset(w * .50f, h * .84f)); line(Offset(w * .16f, h * .50f), Offset(w * .84f, h * .50f)) }
         Glyph.Open -> { drawRect(color, Offset(w * .18f, h * .34f), Size(w * .64f, h * .42f), style = Stroke(1.8f)); line(Offset(w * .20f, h * .34f), Offset(w * .42f, h * .18f)); line(Offset(w * .42f, h * .18f), Offset(w * .62f, h * .34f)) }

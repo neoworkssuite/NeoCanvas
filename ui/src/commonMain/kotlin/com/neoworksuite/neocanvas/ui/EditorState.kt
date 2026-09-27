@@ -3251,6 +3251,14 @@ class EditorState(
     fun dismissInspectorToCanvas() {
         val dismissedPanel = if (inspectorVisible) inspectorPanel else null
         hideInspector()
+        objectEditorVisible = false
+        recentStrokesVisible = false
+        psdCompatibilityVisible = false
+        versionsVisible = false
+        versionComparison = null
+        versionError = null
+        workbenchPanelVisible = false
+        settingsVisible = false
         if (dismissedPanel == InspectorPanel.Brushes) {
             tool = if (brush == BuiltInBrushes.eraser) Tool.Eraser else Tool.Brush
         }

@@ -7,6 +7,17 @@ import kotlin.test.assertTrue
 
 class StudioMenuPresentationTest {
     @Test
+    fun actions_use_direct_icon_tabs_in_a_stable_order() {
+        val tabs = studioActionTabs()
+
+        assertEquals(
+            listOf("Add", "Canvas", "Guides", "Studio", "Export", "Prefs"),
+            tabs.map { it.label },
+        )
+        assertEquals(tabs.size, tabs.map { it.glyph }.distinct().size)
+    }
+
+    @Test
     fun common_menu_commands_have_familiar_distinct_icons() {
         assertEquals(Glyph.Add, menuPresentation(StudioMenuCommand.AddImport).glyph)
         assertEquals(Glyph.Canvas, menuPresentation(StudioMenuCommand.Canvas).glyph)
