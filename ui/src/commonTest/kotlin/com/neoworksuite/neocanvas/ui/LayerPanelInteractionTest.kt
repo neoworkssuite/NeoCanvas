@@ -1,5 +1,6 @@
 package com.neoworksuite.neocanvas.ui
 
+import androidx.compose.ui.unit.dp
 import com.neoworksuite.neocanvas.core.model.CanvasDocument
 import com.neoworksuite.neocanvas.core.model.DocumentHistory
 import kotlin.test.Test
@@ -8,8 +9,24 @@ import kotlin.test.assertTrue
 
 class LayerPanelInteractionTest {
     @Test fun layer_panel_uses_the_compact_width_on_ipad_and_narrow_layouts() {
-        assertEquals(320, layerPanelMaxWidthDp(compact = false))
-        assertEquals(320, layerPanelMaxWidthDp(compact = true))
+        assertEquals(280, layerPanelMaxWidthDp(compact = false))
+        assertEquals(300, layerPanelMaxWidthDp(compact = true))
+    }
+
+    @Test fun layer_panel_height_tracks_content_and_stops_growing() {
+        assertEquals(284, layerPanelHeightDp(3, 0, selectedObjectCount = 0, arrangePicking = false, compact = false))
+        assertEquals(460, layerPanelHeightDp(40, 4, selectedObjectCount = 0, arrangePicking = false, compact = false))
+        assertEquals(520, layerPanelHeightDp(40, 4, selectedObjectCount = 0, arrangePicking = true, compact = true))
+    }
+
+    @Test fun multi_object_arrange_controls_receive_the_full_panel_height() {
+        assertEquals(460, layerPanelHeightDp(2, 0, selectedObjectCount = 2, arrangePicking = true, compact = false))
+        assertEquals(520, layerPanelHeightDp(3, 0, selectedObjectCount = 3, arrangePicking = true, compact = true))
+    }
+
+    @Test fun panel_dimension_is_resolved_once_from_viewport_and_cap() {
+        assertEquals(280.dp, cappedPanelDimension(1800.dp, .32f, 280.dp))
+        assertEquals(224.dp, cappedPanelDimension(700.dp, .32f, 280.dp))
     }
 
     @Test fun layer_header_icons_keep_an_accessible_touch_target() {

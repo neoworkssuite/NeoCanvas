@@ -53,7 +53,24 @@ import kotlin.math.roundToInt
 
 internal enum class LayerDragRegion { Handle, Body, Controls }
 internal fun allowsLayerReorder(region: LayerDragRegion): Boolean = region == LayerDragRegion.Handle
-internal fun layerPanelMaxWidthDp(compact: Boolean): Int = 320
+internal fun layerPanelMaxWidthDp(compact: Boolean): Int = if (compact) 300 else 280
+internal fun layerPanelHeightDp(
+    layerCount: Int,
+    groupCount: Int,
+    selectedObjectCount: Int,
+    arrangePicking: Boolean,
+    compact: Boolean,
+): Int {
+    val maximum = if (compact) 520 else 460
+    if (selectedObjectCount >= 2) return maximum
+    val arrangeHeight = when {
+        selectedObjectCount == 1 -> 170
+        arrangePicking -> 70
+        else -> 0
+    }
+    val contentHeight = 110 + layerCount * 58 + groupCount * 48 + arrangeHeight
+    return contentHeight.coerceIn(160, maximum)
+}
 internal fun layerHeaderTouchTargetDp(): Int = 44
 
 @Composable
@@ -76,10 +93,7 @@ fun LayersPanel(state: EditorState, modifier: Modifier = Modifier) {
     val visibleLayers = state.document.layers.asReversed().filterNot { it.groupId in collapsedGroups }
 
     Column(modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(
-            Modifier.fillMaxWidth().padding(end = 42.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Row(Modifier.fillMaxWidth().padding(end = 42.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("LAYERS", color = NeoCanvasColors.paper, fontSize = 11.sp, letterSpacing = 1.2.sp)
             Text(
                 state.document.layers.size.toString(),
@@ -88,6 +102,12 @@ fun LayersPanel(state: EditorState, modifier: Modifier = Modifier) {
                 modifier = Modifier.padding(start = 5.dp),
             )
             Spacer(Modifier.weight(1f))
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(end = 42.dp),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             LayerMemoryMenu(state)
             LayerHeaderAction(Glyph.Select, "Pick objects", selected = state.objectArrangePicking) {
                 state.toggleObjectArrangePicking()

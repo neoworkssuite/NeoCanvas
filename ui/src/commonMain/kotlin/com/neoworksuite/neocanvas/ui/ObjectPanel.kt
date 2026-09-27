@@ -44,6 +44,14 @@ import com.neoworksuite.neocanvas.core.model.LineCap
 import com.neoworksuite.neocanvas.core.model.LineMarker
 import com.neoworksuite.neocanvas.core.model.LineStyle
 
+internal fun objectPanelWidthDp(compact: Boolean): Int = if (compact) 390 else 360
+internal fun objectPanelHeightDp(textObject: Boolean, compact: Boolean): Int = when {
+    textObject && compact -> 600
+    textObject -> 640
+    compact -> 500
+    else -> 520
+}
+
 @Composable
 fun ObjectPanel(state: EditorState, modifier: Modifier = Modifier, onClose: () -> Unit) {
     val layer = state.activeObjectLayer

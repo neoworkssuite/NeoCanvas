@@ -69,6 +69,9 @@ internal fun colourStudioBounds(compact: Boolean): ColourStudioBounds = if (comp
     ColourStudioBounds(.36f, .66f, 380.dp, 520.dp)
 }
 
+internal fun cappedPanelDimension(available: Dp, fraction: Float, cap: Dp): Dp =
+    minOf(available * fraction, cap)
+
 @Composable
 fun rememberEditorState(fileActions: EditorFileActions = UnavailableEditorFileActions): EditorState = remember {
         EditorState(
@@ -322,10 +325,22 @@ fun NeoCanvasApp(
                             start = if (compact) 10.dp else 0.dp,
                             bottom = 12.dp,
                         )
-                        .fillMaxWidth(if (compact) .88f else .32f)
-                        .fillMaxHeight(if (compact) .68f else .82f)
-                        .widthIn(max = layerPanelMaxWidthDp(compact).dp)
-                        .heightIn(max = 680.dp)
+                        .width(
+                            cappedPanelDimension(
+                                available = maxWidth,
+                                fraction = if (compact) .88f else .32f,
+                                cap = layerPanelMaxWidthDp(compact).dp,
+                            ),
+                        )
+                        .height(
+                            layerPanelHeightDp(
+                                layerCount = state.document.layers.size,
+                                groupCount = state.document.groups.size,
+                                selectedObjectCount = state.selectedObjectCount,
+                                arrangePicking = state.objectArrangePicking,
+                                compact = compact,
+                            ).dp,
+                        )
 
                 InspectorPanel.Effects ->
                     Modifier.align(overlayAlignment)
@@ -371,6 +386,20 @@ fun NeoCanvasApp(
             }
         }
         if (state.objectEditorVisible) {
+            val objectPanelHeight = objectPanelHeightDp(
+                textObject = state.activeTextObject != null,
+                compact = compact,
+            )
+            val resolvedObjectWidth = cappedPanelDimension(
+                available = maxWidth,
+                fraction = if (compact) .94f else .42f,
+                cap = objectPanelWidthDp(compact).dp,
+            )
+            val resolvedObjectHeight = cappedPanelDimension(
+                available = maxHeight,
+                fraction = if (compact) .72f else .82f,
+                cap = objectPanelHeight.dp,
+            )
             Box(
                 Modifier.align(responsivePanelAlignment)
                     .padding(
@@ -378,10 +407,8 @@ fun NeoCanvasApp(
                         start = if (compact) 10.dp else 0.dp,
                         bottom = 12.dp,
                     )
-                    .fillMaxWidth(if (compact) .94f else .42f)
-                    .fillMaxHeight(if (compact) .72f else .82f)
-                    .widthIn(max = 460.dp)
-                    .heightIn(max = 700.dp)
+                    .width(resolvedObjectWidth)
+                    .height(resolvedObjectHeight)
                     .clip(RoundedCornerShape(16.dp))
                     .background(NeoCanvasColors.panel.copy(alpha = .98f))
                     .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(16.dp))
