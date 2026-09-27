@@ -12,6 +12,10 @@ class LayerPanelInteractionTest {
         assertEquals(320, layerPanelMaxWidthDp(compact = true))
     }
 
+    @Test fun layer_header_icons_keep_an_accessible_touch_target() {
+        assertEquals(44, layerHeaderTouchTargetDp())
+    }
+
     @Test fun dragging_a_displayed_layer_down_reorders_it_and_undo_restores_the_stack() {
         val state = EditorState(DocumentHistory(CanvasDocument.blank(16, 16)))
         state.addLayer() // layer-1, bottom

@@ -54,6 +54,7 @@ import kotlin.math.roundToInt
 internal enum class LayerDragRegion { Handle, Body, Controls }
 internal fun allowsLayerReorder(region: LayerDragRegion): Boolean = region == LayerDragRegion.Handle
 internal fun layerPanelMaxWidthDp(compact: Boolean): Int = 320
+internal fun layerHeaderTouchTargetDp(): Int = 44
 
 @Composable
 fun StudioInspector(state: EditorState, compact: Boolean, modifier: Modifier = Modifier) {
@@ -654,7 +655,7 @@ private fun LayerHeaderAction(
 ) {
     val highlighted = selected || accent
     Box(
-        Modifier.size(32.dp)
+        Modifier.size(layerHeaderTouchTargetDp().dp)
             .clip(RoundedCornerShape(8.dp))
             .background(if (highlighted) NeoCanvasColors.accent else Color.Transparent)
             .clickable(onClick = onClick)

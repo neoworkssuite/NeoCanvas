@@ -19,6 +19,9 @@ class VerifyVersionContractTest(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         root = Path(temporary.name)
         (root / "docs").mkdir()
+        (root / "iosApp" / "Configuration").mkdir(parents=True)
+        (root / "androidApp").mkdir()
+        (root / "windowsApp" / "src" / "jvmMain" / "kotlin" / "com" / "neoworksuite" / "neocanvas" / "platform").mkdir(parents=True)
         (root / "VERSION").write_text(version + "\n", encoding="utf-8")
         (root / "docs" / "VERSIONING.md").write_text(
             f"Product version: `{version}`\n\nApple build: `1`\nAndroid build: `1`\nWindows build: `1`\n",
@@ -27,6 +30,18 @@ class VerifyVersionContractTest(unittest.TestCase):
         (root / "README.md").write_text(
             "iPad macOS Windows Android\n\nPARITY-READY\n\n"
             "docs/MIGRATION-AUDIT.md docs/PLATFORM-PARITY.md docs/VERSIONING.md\n",
+            encoding="utf-8",
+        )
+        (root / "iosApp" / "Configuration" / "Config.xcconfig").write_text(
+            "CURRENT_PROJECT_VERSION = 1\n",
+            encoding="utf-8",
+        )
+        (root / "androidApp" / "build.gradle.kts").write_text(
+            "versionCode = 1\n",
+            encoding="utf-8",
+        )
+        (root / "windowsApp" / "src" / "jvmMain" / "kotlin" / "com" / "neoworksuite" / "neocanvas" / "platform" / "WindowsLaunchContract.kt").write_text(
+            "const val buildNumber = 1\n",
             encoding="utf-8",
         )
         return root
@@ -51,6 +66,15 @@ class VerifyVersionContractTest(unittest.TestCase):
         path.write_text(path.read_text().replace("Apple build: `1`", "Apple build: `zero`"), encoding="utf-8")
         errors = MODULE.verify_version_contract(root)
         self.assertTrue(any("Apple build" in error for error in errors), errors)
+
+    def test_documented_build_values_match_platform_metadata(self) -> None:
+        root = self.fixture()
+        path = root / "docs" / "VERSIONING.md"
+        path.write_text(path.read_text().replace("Apple build: `1`", "Apple build: `2`"), encoding="utf-8")
+
+        errors = MODULE.verify_version_contract(root)
+
+        self.assertTrue(any("Apple build does not match" in error for error in errors), errors)
 
     def test_readme_links_platforms_and_policy(self) -> None:
         root = self.fixture()

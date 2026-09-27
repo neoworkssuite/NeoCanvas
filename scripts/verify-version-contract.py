@@ -19,7 +19,21 @@ def verify_version_contract(root: Path) -> list[str]:
     version_path = root / "VERSION"
     versioning_path = root / "docs" / "VERSIONING.md"
     readme_path = root / "README.md"
-    for path in (version_path, versioning_path, readme_path):
+    build_sources = {
+        "Apple": (
+            root / "iosApp" / "Configuration" / "Config.xcconfig",
+            re.compile(r"CURRENT_PROJECT_VERSION\s*=\s*(\d+)"),
+        ),
+        "Android": (
+            root / "androidApp" / "build.gradle.kts",
+            re.compile(r"versionCode\s*=\s*(\d+)"),
+        ),
+        "Windows": (
+            root / "windowsApp" / "src" / "jvmMain" / "kotlin" / "com" / "neoworksuite" / "neocanvas" / "platform" / "WindowsLaunchContract.kt",
+            re.compile(r"buildNumber\s*=\s*(\d+)"),
+        ),
+    }
+    for path in (version_path, versioning_path, readme_path, *(source[0] for source in build_sources.values())):
         if not path.is_file():
             errors.append(f"missing required version file: {path.relative_to(root)}")
     if errors:
@@ -32,10 +46,19 @@ def verify_version_contract(root: Path) -> list[str]:
     versioning = versioning_path.read_text(encoding="utf-8")
     if f"Product version: `{version}`" not in versioning:
         errors.append("documented product version does not match VERSION")
-    for platform in ("Apple", "Android", "Windows"):
+    for platform, (source_path, source_pattern) in build_sources.items():
         match = re.search(rf"{platform} build:\s*`([^`]+)`", versioning)
         if not match or not match.group(1).isdigit() or int(match.group(1)) < 1:
             errors.append(f"{platform} build must be a positive numeric value")
+            continue
+        source_match = source_pattern.search(source_path.read_text(encoding="utf-8"))
+        if not source_match:
+            errors.append(f"{platform} native build value is missing")
+        elif int(match.group(1)) != int(source_match.group(1)):
+            errors.append(
+                f"{platform} build does not match native metadata: "
+                f"documented {match.group(1)}, native {source_match.group(1)}"
+            )
 
     readme = readme_path.read_text(encoding="utf-8")
     required_readme = (

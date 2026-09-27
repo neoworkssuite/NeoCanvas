@@ -3,6 +3,7 @@ package com.neoworksuite.neocanvas.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
@@ -43,6 +44,7 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
@@ -355,7 +357,7 @@ fun NeoCanvasApp(
                     .clip(RoundedCornerShape(16.dp))
                     .background(NeoCanvasColors.panel.copy(alpha = .98f))
                     .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(16.dp))
-                    .clickable(interactionSource = null, indication = null) {},
+                    .pointerInput(Unit) { detectTapGestures(onTap = {}) },
             ) {
                 StudioInspector(state, compact = compact, modifier = Modifier.fillMaxSize())
                 Text(
@@ -383,7 +385,7 @@ fun NeoCanvasApp(
                     .clip(RoundedCornerShape(16.dp))
                     .background(NeoCanvasColors.panel.copy(alpha = .98f))
                     .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(16.dp))
-                    .clickable(interactionSource = null, indication = null) {},
+                    .pointerInput(Unit) { detectTapGestures(onTap = {}) },
             ) {
                 ObjectPanel(
                     state = state,
@@ -407,7 +409,7 @@ fun NeoCanvasApp(
                     .clip(RoundedCornerShape(16.dp))
                     .background(NeoCanvasColors.panel.copy(alpha = .98f))
                     .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(16.dp))
-                    .clickable(interactionSource = null, indication = null) {},
+                    .pointerInput(Unit) { detectTapGestures(onTap = {}) },
             ) {
                 PsdCompatibilityPanel(
                     state = state,
@@ -431,7 +433,7 @@ fun NeoCanvasApp(
                     .clip(RoundedCornerShape(16.dp))
                     .background(NeoCanvasColors.panel.copy(alpha = .98f))
                     .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(16.dp))
-                    .clickable(interactionSource = null, indication = null) {},
+                    .pointerInput(Unit) { detectTapGestures(onTap = {}) },
             ) {
                 RecentStrokesPanel(
                     state = state,
@@ -455,7 +457,7 @@ fun NeoCanvasApp(
                     .clip(RoundedCornerShape(16.dp))
                     .background(NeoCanvasColors.panel.copy(alpha = .98f))
                     .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(16.dp))
-                    .clickable(interactionSource = null, indication = null) {},
+                    .pointerInput(Unit) { detectTapGestures(onTap = {}) },
             ) {
                 WorkbenchPanel(
                     state = state,
@@ -479,7 +481,7 @@ fun NeoCanvasApp(
                     .clip(RoundedCornerShape(16.dp))
                     .background(NeoCanvasColors.panel.copy(alpha = .98f))
                     .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(16.dp))
-                    .clickable(interactionSource = null, indication = null) {},
+                    .pointerInput(Unit) { detectTapGestures(onTap = {}) },
             ) {
                 VersionsPanel(
                     state = state,
@@ -495,7 +497,7 @@ fun NeoCanvasApp(
                     .widthIn(max = 720.dp).heightIn(max = 680.dp)
                     .clip(RoundedCornerShape(18.dp)).background(NeoCanvasColors.panel)
                     .border(1.dp, NeoCanvasColors.line, RoundedCornerShape(18.dp))
-                    .clickable(interactionSource = null, indication = null) {},
+                    .pointerInput(Unit) { detectTapGestures(onTap = {}) },
             ) {
                 SettingsPanel(
                     state = state,
