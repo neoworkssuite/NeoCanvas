@@ -952,6 +952,9 @@ class EditorState(
         val end = result.points.last()
         if (!start.x.isFinite() || !start.y.isFinite() || !end.x.isFinite() || !end.y.isFinite()) return false
         if (start.x == end.x && start.y == end.y) return false
+        val drawingLayerId = activeLayerId?.takeIf { currentId ->
+            document.layers.firstOrNull { it.id == currentId }?.payload is LayerPayload.Raster
+        }
         val id = nextLayerId()
         val payload = LayerPayload.ShapeObject(
             kind = ShapeKind.Line,
@@ -965,9 +968,9 @@ class EditorState(
         )
         execute(AddShapeLayer(id, "Line", payload, opacity = opacity.coerceIn(0f, 1f)))
         recordUsedColour(colour)
-        activeLayerId = id
+        activeLayerId = drawingLayerId ?: id
         clearSelection()
-        statusMessage = "Smart Line added"
+        statusMessage = "Smart Line added — continue drawing"
         return true
     }
 

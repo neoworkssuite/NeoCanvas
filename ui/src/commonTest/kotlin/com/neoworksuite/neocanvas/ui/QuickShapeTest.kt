@@ -52,6 +52,24 @@ class QuickShapeTest {
     }
 
     @Test
+    fun smart_line_returns_focus_to_the_drawing_layer_for_the_next_stroke() {
+        val state = EditorState(DocumentHistory(CanvasDocument.blank(200, 200)))
+        state.addLayer()
+        val drawingLayerId = assertNotNull(state.activeLayerId)
+        val result = QuickShapeResult(
+            QuickShapeType.Line,
+            listOf(DrawPoint(10f, 20f), DrawPoint(90f, 60f)),
+        )
+
+        assertTrue(state.commitQuickShape(result, Color.Black, 6f, 1f))
+
+        assertEquals(drawingLayerId, state.activeLayerId)
+        assertTrue(state.document.layers.any { it.payload is LayerPayload.ShapeObject })
+        state.recordStroke(listOf(DrawPoint(120f, 120f)), stabilize = false)
+        assertTrue(state.tileStore.keys.any { it.layerId == drawingLayerId })
+    }
+
+    @Test
     fun unsupported_or_invalid_quick_shape_leaves_raster_fallback_to_the_caller() {
         val state = EditorState(DocumentHistory(CanvasDocument.blank(200, 200)))
         val circle = QuickShapeResult(
